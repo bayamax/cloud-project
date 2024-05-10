@@ -73,6 +73,10 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
     model = Project
     fields = ['title', 'description']
     template_name = 'project_form.html'
+    
+    def get_initial(self):
+        # 初期値を設定
+        return {'description': 'プロジェクト憲章\n 社会的背景：\n ・\n\n 根本ニーズ：\n ・\n\n 我々はなぜここにいるのか：\n ・\n\n エレベーターピッチ：\n ・　　たい\n ・　　のための\n ・　　というプロダクトは\n ・　　\n ・これは　　を提供します\n ・　　とは違い\n ・　　する機能が備わっている\n\n'}
 
     def form_valid(self, form):
         # 現在のユーザーをオーナーとして設定
@@ -326,3 +330,16 @@ def delete_milestone(request, pk):
 
     # POSTでない場合は削除確認ページを表示
     return render(request, 'milestone_confirm_delete.html', {'milestone': milestone})
+
+from django.views.generic.edit import UpdateView
+from .models import Project
+from .forms import ProjectDescriptionForm
+from django.urls import reverse_lazy
+
+class ProjectDescriptionUpdateView(LoginRequiredMixin, UpdateView):
+    model = Project
+    form_class = ProjectDescriptionForm
+    template_name = 'project_description_form.html'
+
+    def get_success_url(self):
+        return reverse_lazy('project_detail', kwargs={'pk': self.object.pk})

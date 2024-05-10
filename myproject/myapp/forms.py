@@ -50,3 +50,12 @@ class MessageForm(forms.ModelForm):
         widgets = {
             'text': forms.TextInput(attrs={'placeholder': 'メッセージを入力'}),
         }
+
+from django.forms import ModelForm
+from .models import Project
+
+class ProjectDescriptionForm(ModelForm):
+    class Meta:
+        model = Project
+        fields = ['description']
+
