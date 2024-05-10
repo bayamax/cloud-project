@@ -73,8 +73,15 @@
     </nav>
 
     <div class="container">
-        <p>{{ project.description }}</p>
-
+        <p>{{ project.description|linebreaksbr }}</p>
+        {% if is_participant %}
+            <form action="{% url 'edit_project_description' project.id %}" method="post">
+                {% csrf_token %}
+                <input type="submit" value="プロジェクト憲章を編集する" class="btn btn-primary"/>
+            </form>
+        {% endif %}
+        <br>
+        <br>
         <!-- ゴール作成機能 -->
         {% if not project.goals.all %}
             {% if is_participant %}
