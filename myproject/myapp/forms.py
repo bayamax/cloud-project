@@ -58,4 +58,3 @@ class ProjectDescriptionForm(ModelForm):
     class Meta:
         model = Project
         fields = ['description']
-
