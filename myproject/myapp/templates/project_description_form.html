@@ -1,10 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プロジェクト憲章の編集</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #007bff; /* ナビゲーションバーの背景色 */
+            color: white;
+        }
+        .container {
+            max-width: 960px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .header-title {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            color: white; /* ヘッダータイトルの色 */
+            background-color: #007bff; /* ヘッダータイトルの背景色 */
+            padding: 10px;
+        }
+        input[type="submit"] {
+            margin-top: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            padding: 10px 15px;
+        }
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    {% load static %}
+    <nav class="navbar navbar-expand-md navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'project_list' %}">プロジェクト憲章編集</a>
+        </div>
+    </nav>
 
+    <div class="container">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <input type="submit" value="更新">
+        </form>
+        <!-- 追加のコンテンツ -->
+    </div>
 
-{% block content %}
-    <h2>Edit Project Description</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Update</button>
-    </form>
-{% endblock %}
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.9.9/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

@@ -20,6 +20,8 @@ from django.urls import path
 from django.urls import path
 from .views import delete_milestone 
 from .views import ProjectDescriptionUpdateView
+from django.urls import path
+#from .views import update_project_description
 
 
 urlpatterns = [
@@ -66,5 +68,7 @@ urlpatterns = [
     path('milestone/<int:pk>/delete/', delete_milestone, name='delete_milestone'),
     
     path('project/<int:pk>/edit_description/', ProjectDescriptionUpdateView.as_view(), name='edit_project_description'),
+    
+    #path('project/<int:pk>/edit_description/', update_project_description, name='edit_project_description'),
     
 ]

@@ -67,6 +67,11 @@
                         </form>
                         <a href="{% url 'project_list' %}" class="btn btn-secondary">メインページ</a>
                     </div>
+                {% else %}
+                    <div class="mt-2 btn-group">
+                        <a href="{% url 'login' %}" class="btn btn-primary">ログイン</a>
+                        <a href="{% url 'signup' %}" class="btn btn-secondary">サインアップ</a>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -102,11 +107,9 @@
             {% for milestone in goal_data.milestones %}
                 {% if not milestone.parent_milestone %}
                     <div style="margin-left: 20px;">
+                        {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
                         {% if is_participant %}
-                            {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
                             {% include 'milestone_buttons.html' with milestone=milestone %}
-                        {% else %}
-                            {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
                         {% endif %}
                         {% include 'milestone_recursive.html' with milestone=milestone is_participant=is_participant %}
                     </div>
@@ -136,4 +139,3 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
 </body>
 </html>
-

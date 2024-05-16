@@ -54,7 +54,10 @@ class MessageForm(forms.ModelForm):
 from django.forms import ModelForm
 from .models import Project
 
-class ProjectDescriptionForm(ModelForm):
+from django import forms
+from .models import Project
+
+class ProjectDescriptionForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = ['description']

@@ -1,37 +1,39 @@
-from django.shortcuts import render
-from django.urls import reverse_lazy
-from django.views import generic
-from .forms import CustomUserCreationForm
+from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse_lazy, reverse
+from django.views import generic, View
+from django.views.generic import DetailView, ListView, TemplateView
+from django.views.generic.edit import CreateView, UpdateView
 from django.contrib.auth.views import LoginView
-from .models import Milestone
-from django.views.generic import DetailView, CreateView
-from .models import Project, Goal, Milestone
-from .forms import MilestoneForm
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.utils.decorators import method_decorator
+from django.contrib.auth import get_user_model
+from django.db.models import Sum
+from django.db import transaction
+from .forms import CustomUserCreationForm, ProjectDescriptionForm, MessageForm, GoalForm, MilestoneForm
+from .models import Project, Goal, Milestone, Message
 
+User = get_user_model()
+
+# サインアップビュー
 class SignUpView(generic.CreateView):
     form_class = CustomUserCreationForm
     success_url = reverse_lazy("login")
     template_name = "signup.html"
 
-from django.views.generic import ListView
-from .models import Project
-
+# プロジェクトリストビュー（ログイン不要）
 class ProjectListView(ListView):
     model = Project
     template_name = "project_list.html"
 
-from django.views.generic import DetailView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import Project, Message
-from .forms import MessageForm
-
-class ProjectDetailView(LoginRequiredMixin, DetailView):
+# プロジェクト詳細ビュー（ログイン不要）
+class ProjectDetailView(DetailView):
     model = Project
     template_name = 'project_detail.html'
 
     def get_context_data(self, **kwargs):
-        context = super(ProjectDetailView, self).get_context_data(**kwargs)
-        context['is_participant'] = self.request.user in self.object.participants.all()
+        context = super().get_context_data(**kwargs)
+        context['is_participant'] = self.request.user in self.object.participants.all() if self.request.user.is_authenticated else False
         
         # 既存のゴールとマイルストーンをコンテキストに追加
         goals_with_milestones = []
@@ -41,11 +43,13 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         context['goals_with_milestones'] = goals_with_milestones
 
         # チャットメッセージとフォームをコンテキストに追加
-        context['message_form'] = MessageForm()
-        context['messages'] = Message.objects.filter(project=self.object).order_by('-created_at')
+        if self.request.user.is_authenticated:
+            context['message_form'] = MessageForm()
+            context['messages'] = Message.objects.filter(project=self.object).order_by('-created_at')
         
         return context
 
+    @method_decorator(login_required)
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()  # プロジェクトオブジェクトを取得
         context = self.get_context_data(object=self.object)
@@ -63,12 +67,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         
         return self.render_to_response(context)
 
-
-from django.urls import reverse
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic.edit import CreateView
-from .models import Project
-
+# プロジェクト作成ビュー（ログイン必要）
 class ProjectCreateView(LoginRequiredMixin, CreateView):
     model = Project
     fields = ['title', 'description']
@@ -82,36 +81,26 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         # 現在のユーザーをオーナーとして設定
         form.instance.owner = self.request.user
         # フォームの内容を保存して、オブジェクトを作成
-        return super(ProjectCreateView, self).form_valid(form)
+        return super().form_valid(form)
 
     def get_success_url(self):
         # 新しいプロジェクトの詳細ページにリダイレクト
         return reverse('project_detail', args=[self.object.id])
 
+# カスタムログインビュー
 class CustomLoginView(LoginView):
     template_name = 'login.html'
     def get_success_url(self):
         return reverse_lazy("project_list")  # 'project_list'はProjectListViewに設定されたURLの名前
 
-from django.views import View
-from django.shortcuts import get_object_or_404, redirect
-from .models import Project
-
+# プロジェクト参加ビュー（ログイン必要）
 class ProjectJoinView(LoginRequiredMixin, View):
     def post(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
         project.participants.add(request.user)
         return redirect('project_detail', pk=pk)
 
-from django.shortcuts import get_object_or_404, render
-from django.views.generic import TemplateView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth import get_user_model
-from django.db.models import Sum
-from .models import Project, Milestone
-
-User = get_user_model()
-
+# アカウントビュー（ログイン必要）
 class AccountView(LoginRequiredMixin, TemplateView):
     template_name = 'account.html'
 
@@ -147,11 +136,8 @@ class AccountView(LoginRequiredMixin, TemplateView):
 
         return context
 
-from django.views.generic.edit import CreateView
-from .models import Project, Goal, Milestone
-from .forms import GoalForm, MilestoneForm
-
-class GoalCreateView(CreateView):
+# ゴール作成ビュー（ログイン必要）
+class GoalCreateView(LoginRequiredMixin, CreateView):
     model = Goal
     form_class = GoalForm
     template_name = 'goal_form.html'
@@ -164,26 +150,9 @@ class GoalCreateView(CreateView):
 
     def get_success_url(self):
         return reverse('project_detail', kwargs={'pk': self.kwargs['pk']})
-# ...（他のビューのインポートと定義）...
 
-from django.shortcuts import get_object_or_404, redirect
-from django.views.generic.edit import CreateView
-from django.urls import reverse
-from .models import Milestone, Goal
-from .models import Milestone
-from django.views.generic.edit import CreateView, UpdateView
-
-from django.views.generic.edit import CreateView
-from .models import Milestone
-
-from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse
-from django.views.generic.edit import CreateView
-from .models import Milestone, Goal
-from .forms import MilestoneForm
-from decimal import Decimal
-
-class MilestoneCreateView(CreateView):
+# マイルストーン作成ビュー（ログイン必要）
+class MilestoneCreateView(LoginRequiredMixin, CreateView):
     model = Milestone
     form_class = MilestoneForm
     template_name = 'roadmap_form.html'
@@ -230,21 +199,17 @@ class MilestoneCreateView(CreateView):
         # 適切なリダイレクト先を設定
         return reverse('project_detail', kwargs={'pk': self.object.goal.project.id})
 
-
-class MilestoneUpdateView(UpdateView):
+# マイルストーン更新ビュー（ログイン必要）
+class MilestoneUpdateView(LoginRequiredMixin, UpdateView):
     model = Milestone
     fields = ['goal', 'parent_milestone', 'text', 'assigned_to', 'status']
 
     def form_valid(self, form):
-        response = super(MilestoneUpdateView, self).form_valid(form)
+        response = super().form_valid(form)
         self.object.recalculate_points()
         return response
 
-from django.shortcuts import get_object_or_404, redirect
-from django.views import View
-from .models import Milestone
-from django.contrib.auth.mixins import LoginRequiredMixin
-
+# マイルストーン開始ビュー（ログイン必要）
 class StartMilestoneView(LoginRequiredMixin, View):
     def post(self, request, pk):
         milestone = get_object_or_404(Milestone, pk=pk)
@@ -253,6 +218,7 @@ class StartMilestoneView(LoginRequiredMixin, View):
         milestone.save()
         return redirect('project_detail', pk=milestone.goal.project.id)
 
+# マイルストーン完了ビュー（ログイン必要）
 class CompleteMilestoneView(LoginRequiredMixin, View):
     def post(self, request, pk):
         milestone = get_object_or_404(Milestone, pk=pk)
@@ -261,12 +227,7 @@ class CompleteMilestoneView(LoginRequiredMixin, View):
             milestone.save()
         return redirect('project_detail', pk=milestone.goal.project.id)
 
-# views.py
-
-from django.shortcuts import get_object_or_404, render
-from .models import Project, Milestone
-from django.db.models import Sum
-
+# プロジェクト参加者のビュー（ログイン不要）
 def project_participants(request, pk):
     project = get_object_or_404(Project, id=pk)
     participants = project.participants.all()
@@ -291,14 +252,7 @@ def project_participants(request, pk):
     }
     return render(request, 'project_participants.html', context)
 
-
-from django.shortcuts import get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.urls import reverse
-from .models import Milestone, Goal
-from decimal import Decimal
-
+# マイルストーン削除ビュー（ログイン必要）
 @login_required
 def delete_milestone(request, pk):
     milestone = get_object_or_404(Milestone, pk=pk)
@@ -331,15 +285,23 @@ def delete_milestone(request, pk):
     # POSTでない場合は削除確認ページを表示
     return render(request, 'milestone_confirm_delete.html', {'milestone': milestone})
 
+# プロジェクト説明更新ビュー（ログイン必要）
 from django.views.generic.edit import UpdateView
+from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Project
-from .forms import ProjectDescriptionForm
 from django.urls import reverse_lazy
 
 class ProjectDescriptionUpdateView(LoginRequiredMixin, UpdateView):
     model = Project
-    form_class = ProjectDescriptionForm
+    fields = ['description']
     template_name = 'project_description_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if 'form' not in context:
+            context['form'] = self.get_form()
+        context['form'].fields['description'].initial = self.object.description
+        return context
 
     def get_success_url(self):
         return reverse_lazy('project_detail', kwargs={'pk': self.object.pk})
