@@ -77,14 +77,14 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-#import dj_database_url
-#import os
+import dj_database_url
+import os
 
-#DATABASES = {
-#    'default': dj_database_url.config(
-#        default=os.environ.get('DATABASE_URL')
-#    )
-#}
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL')
+    )
+}
 
 from pathlib import Path
 
@@ -92,12 +92,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',  # 正しくパスを結合
-    }
-}
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME': BASE_DIR / 'db.sqlite3',  # 正しくパスを結合
+#    }
+#}
 
 #DATABASES['default']['ENGINE'] = 'django.db.backends.postgresql'
 
@@ -149,5 +149,5 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-#STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
