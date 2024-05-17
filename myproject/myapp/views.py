@@ -12,6 +12,7 @@ from django.db.models import Sum
 from django.db import transaction
 from .forms import CustomUserCreationForm, ProjectDescriptionForm, MessageForm, GoalForm, MilestoneForm
 from .models import Project, Goal, Milestone, Message
+from decimal import Decimal
 
 User = get_user_model()
 
