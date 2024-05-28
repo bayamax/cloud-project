@@ -17,10 +17,29 @@ from decimal import Decimal
 User = get_user_model()
 
 # サインアップビュー
+from django.urls import reverse_lazy
+from django.views import generic
+from .forms import CustomUserCreationForm
+from django.contrib.auth.views import LoginView
+
+# サインアップビュー
 class SignUpView(generic.CreateView):
     form_class = CustomUserCreationForm
     success_url = reverse_lazy("login")
     template_name = "signup.html"
+
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        if not form.cleaned_data['password1']:
+            user.set_unusable_password()
+        user.save()
+        return super().form_valid(form)
+
+class CustomLoginView(LoginView):
+    template_name = 'login.html'
+    
+    def get_success_url(self):
+        return reverse_lazy("project_list")  # 'project_list'はProjectListViewに設定されたURLの名前
 
 # プロジェクトリストビュー（ログイン不要）
 class ProjectListView(ListView):
@@ -88,11 +107,6 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         # 新しいプロジェクトの詳細ページにリダイレクト
         return reverse('project_detail', args=[self.object.id])
 
-# カスタムログインビュー
-class CustomLoginView(LoginView):
-    template_name = 'login.html'
-    def get_success_url(self):
-        return reverse_lazy("project_list")  # 'project_list'はProjectListViewに設定されたURLの名前
 
 # プロジェクト参加ビュー（ログイン必要）
 class ProjectJoinView(LoginRequiredMixin, View):

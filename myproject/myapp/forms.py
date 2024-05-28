@@ -2,10 +2,30 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import CustomUser
 
+from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import get_user_model
+
+CustomUser = get_user_model()
+
 class CustomUserCreationForm(UserCreationForm):
+    password1 = forms.CharField(required=False, widget=forms.PasswordInput, label="Password")
+    password2 = forms.CharField(required=False, widget=forms.PasswordInput, label="Password confirmation")
+
     class Meta:
         model = CustomUser
-        fields = ('username', 'email')  # 必要に応じて他のフィールドを追加
+        fields = ('username', 'email')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get("password1")
+        password2 = cleaned_data.get("password2")
+
+        if password1 or password2:
+            if password1 != password2:
+                raise forms.ValidationError("Passwords do not match.")
+        
+        return cleaned_data
 
 from django.forms import ModelForm
 from .models import Project

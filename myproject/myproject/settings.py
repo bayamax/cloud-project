@@ -25,9 +25,11 @@ SECRET_KEY = 'django-insecure-n$9o(w)vb-4d*ly8@3jgs^0h7e)ey90)5i@2(4nko8pbjy3(j=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['cloud-projects-b04a963eb8c4.herokuapp.com','127.0.0.1']
+ALLOWED_HOSTS = ['cloud-projects-b04a963eb8c4.herokuapp.com','127.0.0.1','afbf-126-236-167-50.ngrok-free.app']
 
 AUTH_USER_MODEL = 'myapp.CustomUser'
+
+CSRF_TRUSTED_ORIGINS = ['https://afbf-126-236-167-50.ngrok-free.app']
 
 # Application definition
 
@@ -39,6 +41,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'myapp',
+    'django.contrib.sites',  # 必要な場合
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.twitter',
 ]
 
 MIDDLEWARE = [
@@ -49,7 +56,33 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+SITE_ID = 1
+
+LOGIN_REDIRECT_URL = '/projects/'
+LOGOUT_REDIRECT_URL = '/projects/'
+
+# allauth の設定
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_AUTHENTICATION_METHOD = 'username'
+ACCOUNT_EMAIL_REQUIRED = False
+
+# Twitter APIのキーとシークレット（Twitter開発者アカウントから取得）
+SOCIALACCOUNT_PROVIDERS = {
+    'twitter': {
+        'APP': {
+            'client_id': 'ekeulyBxjiuSVeJgb5DXjNixC',  # 取得したAPI Keyを追加
+            'secret': 'f95gZm1jy36H5GEFmKCYtFxWNivD3mHWf3Nj8gCJZBu3pKp2SB',  # 取得したAPI Secret Keyを追加
+        }
+    }
+}
 
 ROOT_URLCONF = 'myproject.urls'
 
@@ -79,27 +112,29 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 
 import dj_database_url
 import os
-
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL')
-    )
-}
-
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Database
-#DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.sqlite3',
-#        'NAME': BASE_DIR / 'db.sqlite3',  # 正しくパスを結合
-#    }
-#}
+# Determine if we're running on Heroku
+IS_HEROKU = 'DATABASE_URL' in os.environ
 
-#DATABASES['default']['ENGINE'] = 'django.db.backends.postgresql'
+if IS_HEROKU:
+    # Use PostgreSQL on Heroku
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL')
+        )
+    }
+else:
+    # Use SQLite for local development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',  # 正しくパスを結合
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators

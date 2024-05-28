@@ -90,6 +90,9 @@
             </div>
             <button type="submit">登録</button>
         </form>
+        <hr>
+        <p>または</p>
+        <a href="{% url 'account_login' %}?process=login&next={{ request.path }}" class="btn btn-info">Twitterでログイン</a>
         <div class="text-center">
             既にアカウントを持っていますか？ <a href="{% url 'login' %}">サインイン</a>
         </div>
