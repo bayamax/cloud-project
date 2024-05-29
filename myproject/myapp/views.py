@@ -284,25 +284,33 @@ def delete_milestone(request, pk):
         return redirect('project_detail', pk=project.pk)
 
     # POSTでない場合は削除確認ページを表示
-    return render(request, 'milestone_confirm_delete.html', {'milestone': milestone})
+    #return render(request, 'milestone_confirm_delete.html', {'milestone': milestone})
 
 # プロジェクト説明更新ビュー（ログイン必要）
-from django.views.generic.edit import UpdateView
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
+from django.contrib.auth.decorators import login_required
 from .models import Project
-from django.urls import reverse_lazy
+from .forms import ProjectDescriptionForm
 
-class ProjectDescriptionUpdateView(LoginRequiredMixin, UpdateView):
-    model = Project
-    fields = ['description']
-    template_name = 'project_description_form.html'
+@login_required
+def project_description_form(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    initial_data = {
+        'description': project.description
+    }
+    form = ProjectDescriptionForm(initial=initial_data)
+    return render(request, 'project_description_form.html', {'form': form, 'project': project})
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if 'form' not in context:
-            context['form'] = self.get_form()
-        context['form'].fields['description'].initial = self.object.description
-        return context
+@login_required
+def project_description_update(request, pk):
+    project = get_object_or_404(Project, pk=pk)
 
-    def get_success_url(self):
-        return reverse_lazy('project_detail', kwargs={'pk': self.object.pk})
+    if request.method == 'POST':
+        form = ProjectDescriptionForm(request.POST, instance=project)
+        if form.is_valid():
+            form.save()
+            return redirect(reverse('project_detail', kwargs={'pk': project.pk}))
+    
+    # GETリクエストでこの関数が呼ばれた場合、フォームに初期値を入れて表示する
+    return project_description_form(request, pk)

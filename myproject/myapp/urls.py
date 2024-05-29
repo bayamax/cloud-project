@@ -19,8 +19,9 @@ from .views import AccountView
 from django.urls import path
 from django.urls import path
 from .views import delete_milestone 
-from .views import ProjectDescriptionUpdateView
+#from .views import ProjectDescriptionUpdateView
 from django.urls import path
+from .views import project_description_update,project_description_form
 #from .views import update_project_description
 
 
@@ -67,7 +68,11 @@ urlpatterns = [
     
     path('milestone/<int:pk>/delete/', delete_milestone, name='delete_milestone'),
     
-    path('project/<int:pk>/edit_description/', ProjectDescriptionUpdateView.as_view(), name='edit_project_description'),
+    #path('project/<int:pk>/edit_description/', ProjectDescriptionUpdateView.as_view(), name='edit_project_description'),
+    
+    path('project/<int:pk>/edit_description/', project_description_update, name='edit_project_description'),
+    
+    path('project/<int:pk>/description/', project_description_form, name='project_description_form'),
     
     #path('project/<int:pk>/edit_description/', update_project_description, name='edit_project_description'),
     
