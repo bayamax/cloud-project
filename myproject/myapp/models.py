@@ -27,6 +27,7 @@ class Goal(models.Model):
     text = models.TextField()
     # 他のフィールド...
 
+
 from django.db import models
 from django.conf import settings
 
@@ -52,6 +53,7 @@ class Milestone(models.Model):
     )
     points = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     num_children = models.IntegerField(default=0)
+    order = models.IntegerField(default=0)
 
     def __str__(self):
         return self.text

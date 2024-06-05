@@ -1,14 +1,13 @@
-{% for child_milestone in milestone.child_milestones.all %}
-    <div style="margin-left: 20px;">
-        <!-- マイルストーンのテキストとポイントを表示 -->
-        {{ child_milestone.text }} - Points: {{ child_milestone.points | floatformat:2 }}
-
+{% with milestones=milestone.child_milestones.all|dictsort:"order" %}
+{% for child in milestones %}
+    <div class="milestone" data-id="{{ child.id }}" data-parent-id="{{ milestone.id }}" style="margin-left: 20px;">
+        {{ child.text }} - Points: {{ child.points | floatformat:2 }}
         {% if is_participant %}
-            <!-- ボタンの表示。'milestone_buttons.html' には着手、追加、完了報告、削除ボタンが含まれている -->
-            {% include 'milestone_buttons.html' with milestone=child_milestone %}
+            {% include 'milestone_buttons.html' with milestone=child %}
         {% endif %}
-
-        <!-- 子の子マイルストーンを再帰的に表示するテンプレートをインクルード -->
-        {% include 'milestone_recursive.html' with milestone=child_milestone is_participant=is_participant %}
+        <div id="milestones-list-{{ child.id }}">
+            {% include 'milestone_recursive.html' with milestone=child is_participant=is_participant %}
+        </div>
     </div>
 {% endfor %}
+{% endwith %}

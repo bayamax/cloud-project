@@ -10,7 +10,7 @@
             background-color: #f8f9fa;
         }
         .navbar {
-            background-color: #007bff; /* 背景色を統一 */
+            background-color: #007bff;
             color: white;
         }
         .container {
@@ -20,15 +20,15 @@
         .header-title {
             text-align: center;
             margin-top: 20px;
-            color: white; /* タイトルの色を調整 */
+            color: white;
         }
         .btn-primary, .btn-secondary {
             margin-top: 10px;
         }
         .btn-group {
-            display: flex; /* フレックスボックスを有効化 */
-            align-items: center; /* アイテムを中央に揃える */
-            gap: 20px; /* ボタン間の隙間を20pxに設定 */
+            display: flex;
+            align-items: center;
+            gap: 20px;
         }
         .btn-primary:hover {
             background-color: #0056b3;
@@ -47,24 +47,27 @@
         .message-item:last-child {
             border-bottom: none;
         }
+        .milestone {
+            cursor: move;
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body>
     {% load static %}
     <nav class="navbar navbar-expand-md navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'project_list' %}">
-                {{ project.title }}
-            </a>
+            <a class="navbar-brand" href="{% url 'project_list' %}">{{ project.title }}</a>
             <div class="account-info ml-auto">
                 {% if user.is_authenticated %}
                     <div class="mt-2 btn-group">
                         <a href="{% url 'project_participants' project.id %}" class="btn btn-secondary">参加者</a>
-                        <!-- 参加ボタン -->
+                        {% if not is_participant %}
                         <form action="{% url 'project_join' project.id %}" method="post" style="margin: 0;">
                             {% csrf_token %}
                             <input type="submit" value="参加する" class="btn btn-secondary">
                         </form>
+                        {% endif %}
                         <a href="{% url 'project_list' %}" class="btn btn-secondary">メインページ</a>
                     </div>
                 {% else %}
@@ -87,7 +90,6 @@
         {% endif %}
         <br>
         <br>
-        <!-- ゴール作成機能 -->
         {% if not project.goals.all %}
             {% if is_participant %}
                 <form action="{% url 'goal_create' project.id %}" method="post">
@@ -104,18 +106,25 @@
             {% else %}
                 <h3>{{ goal_data.goal.text }}</h3>
             {% endif %}
-            {% for milestone in goal_data.milestones %}
-                {% if not milestone.parent_milestone %}
-                    <div style="margin-left: 20px;">
-                        {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
-                        {% if is_participant %}
-                            {% include 'milestone_buttons.html' with milestone=milestone %}
-                        {% endif %}
-                        {% include 'milestone_recursive.html' with milestone=milestone is_participant=is_participant %}
-                    </div>
-                {% endif %}
-            {% endfor %}
+            <div id="milestones-list-{{ goal_data.goal.id }}">
+                {% for milestone in goal_data.milestones %}
+                    {% if not milestone.parent_milestone %}
+                        <div class="milestone" data-id="{{ milestone.id }}" data-parent-id="">
+                            {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
+                            {% if is_participant %}
+                                {% include 'milestone_buttons.html' with milestone=milestone %}
+                            {% endif %}
+                            <div id="milestones-list-{{ milestone.id }}">
+                                {% include 'milestone_recursive.html' with milestone=milestone is_participant=is_participant %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
         {% endfor %}
+        <br>
+        <button id="edit-roadmap-btn" class="btn btn-primary">ロードマップを編集</button>
+        <button id="save-roadmap-btn" class="btn btn-success" style="display:none;">編集を終了</button>
         <br>
         <br>
 
@@ -134,6 +143,63 @@
             {{ message_form.as_p }}
             <button type="submit" class="btn btn-primary">送信</button>
         </form>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const editButton = document.getElementById('edit-roadmap-btn');
+            const saveButton = document.getElementById('save-roadmap-btn');
+
+            function updateOrderAndParentId() {
+                let order = [];
+                document.querySelectorAll('.milestone[data-id]').forEach(function (item, index) {
+                    const parentElement = item.closest('.milestone[data-id]:not([data-id="' + item.getAttribute('data-id') + '"])');
+                    const parentId = parentElement ? parentElement.getAttribute('data-id') : null;
+                    order.push({
+                        id: item.getAttribute('data-id'),
+                        order: index,
+                        parent_id: parentId ? parentId : null
+                    });
+                });
+
+                console.log(order);  // ログに出力
+
+                fetch('{% url "update_milestone_order" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({order: order})
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    }
+                });
+            }
+
+            if (editButton && saveButton) {
+                editButton.addEventListener('click', function() {
+                    document.querySelectorAll('[id^="milestones-list-"]').forEach(function(list) {
+                        new Sortable(list, {
+                            group: 'milestones',
+                            animation: 150,
+                            onEnd: function (evt) {
+                                // ドラッグアンドドロップ後の処理
+                            }
+                        });
+                    });
+                    editButton.style.display = 'none';
+                    saveButton.style.display = 'block';
+                });
+
+                saveButton.addEventListener('click', function() {
+                    updateOrderAndParentId();
+                });
+            }
+        });
+    </script>
     
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>

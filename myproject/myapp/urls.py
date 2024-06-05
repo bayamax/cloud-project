@@ -23,6 +23,8 @@ from .views import delete_milestone
 from django.urls import path
 from .views import project_description_update,project_description_form
 #from .views import update_project_description
+from django.urls import path
+from .views import update_milestone_order
 
 
 urlpatterns = [
@@ -75,5 +77,7 @@ urlpatterns = [
     path('project/<int:pk>/description/', project_description_form, name='project_description_form'),
     
     #path('project/<int:pk>/edit_description/', update_project_description, name='edit_project_description'),
+    
+    path('update_milestone_order/', update_milestone_order, name='update_milestone_order'),
     
 ]

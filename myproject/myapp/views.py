@@ -36,14 +36,12 @@ class ProjectDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         context['is_participant'] = self.request.user in self.object.participants.all() if self.request.user.is_authenticated else False
         
-        # 既存のゴールとマイルストーンをコンテキストに追加
         goals_with_milestones = []
         for goal in self.object.goals.all():
-            milestones = goal.milestones.filter(parent_milestone__isnull=True)
+            milestones = goal.milestones.filter(parent_milestone__isnull=True).order_by('order')
             goals_with_milestones.append({'goal': goal, 'milestones': milestones})
         context['goals_with_milestones'] = goals_with_milestones
 
-        # チャットメッセージとフォームをコンテキストに追加
         if self.request.user.is_authenticated:
             context['message_form'] = MessageForm()
             context['messages'] = Message.objects.filter(project=self.object).order_by('-created_at')
@@ -52,17 +50,16 @@ class ProjectDetailView(DetailView):
 
     @method_decorator(login_required)
     def post(self, request, *args, **kwargs):
-        self.object = self.get_object()  # プロジェクトオブジェクトを取得
+        self.object = self.get_object()
         context = self.get_context_data(object=self.object)
         
-        # メッセージフォームの処理
         message_form = MessageForm(data=request.POST)
         if message_form.is_valid():
             new_message = message_form.save(commit=False)
             new_message.project = self.object
             new_message.sender = request.user
             new_message.save()
-            context['message_form'] = MessageForm()  # 次のメッセージ用にメッセージフォームをクリア
+            context['message_form'] = MessageForm()
         else:
             context['message_form'] = message_form
         
@@ -314,3 +311,41 @@ def project_description_update(request, pk):
     
     # GETリクエストでこの関数が呼ばれた場合、フォームに初期値を入れて表示する
     return project_description_form(request, pk)
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+from decimal import Decimal
+from .models import Milestone
+from django.db import transaction
+
+@csrf_exempt
+def update_milestone_order(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        order = data.get('order', [])
+
+        with transaction.atomic():
+            for item in order:
+                milestone = Milestone.objects.get(id=item['id'])
+                milestone.order = item['order']
+                milestone.parent_milestone_id = item['parent_id'] if item['parent_id'] else None
+                milestone.save()
+
+            # ポイント再計算処理
+            for item in order:
+                milestone = Milestone.objects.get(id=item['id'])
+                goal_milestones = Milestone.objects.filter(goal=milestone.goal).order_by('order')
+                num_children = goal_milestones.filter(parent_milestone__isnull=True).count()
+                points_per_child = Decimal('1.0') / num_children if num_children else Decimal('1.0')
+                for ms in goal_milestones:
+                    if ms.parent_milestone is None:
+                        ms.points = points_per_child
+                    else:
+                        num_siblings = ms.parent_milestone.child_milestones.count()
+                        ms.points = ms.parent_milestone.points / num_siblings if num_siblings else Decimal('0.0')
+                    ms.save()
+
+        return JsonResponse({'status': 'success'})
+
+    return JsonResponse({'status': 'failure'}, status=400)
