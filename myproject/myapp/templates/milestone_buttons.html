@@ -3,20 +3,20 @@
 <div style="display: inline-block;">
     <!-- 追加ボタン -->
     <form action="{% url 'milestone_create_with_parent' milestone.id %}" method="get" style="display: inline;">
-        <input type="submit" value="追加" class="btn btn-success btn-sm">
+        <input type="submit" value="＋" class="btn btn-success btn-sm">
     </form>
 
     <!-- 削除ボタン -->
     <form action="{% url 'delete_milestone' milestone.id %}" method="post" style="display: inline;">
         {% csrf_token %}
-        <input type="submit" value="削除" class="btn btn-danger btn-sm">
+        <input type="submit" value="−" class="btn btn-danger btn-sm">
     </form>
 
     <!-- 着手ボタン（まだ着手していない場合のみ表示） -->
     {% if milestone.status == 'not_started' %}
         <form action="{% url 'start_milestone' milestone.id %}" method="post" style="display: inline;">
             {% csrf_token %}
-            <input type="submit" value="着手" class="btn btn-primary btn-sm">
+            <input type="submit" value="✔️" class="btn btn-primary btn-sm">
         </form>
     {% endif %}
 
@@ -24,7 +24,7 @@
     {% if user == project.owner and milestone.status == 'in_progress' %}
         <form action="{% url 'complete_milestone' milestone.id %}" method="post" style="display: inline;">
             {% csrf_token %}
-            <input type="submit" value="完了報告" class="btn btn-info btn-sm">
+            <input type="submit" value="accept" class="btn btn-info btn-sm">
         </form>
     {% endif %}
 

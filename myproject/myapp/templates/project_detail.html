@@ -84,37 +84,27 @@
         <!-- タブメニュー -->
         <ul class="nav nav-tabs" id="projectTabs" role="tablist">
             <li class="nav-item">
-                <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">overview</a>
+                <a class="nav-link active" id="charter-tab" data-toggle="tab" href="#charter" role="tab" aria-controls="charter" aria-selected="true">プロジェクト憲章</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" id="roadmap-tab" data-toggle="tab" href="#roadmap" role="tab" aria-controls="roadmap" aria-selected="false">ロードマップ</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" id="charter-tab" data-toggle="tab" href="#charter" role="tab" aria-controls="charter" aria-selected="false">プロジェクト憲章</a>
+                <a class="nav-link" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="false">チャット</a>
             </li>
         </ul>
 
         <div class="tab-content" id="projectTabsContent">
-            <!-- overviewタブ -->
-            <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            <!-- プロジェクト憲章タブ -->
+            <div class="tab-pane fade show active" id="charter" role="tabpanel" aria-labelledby="charter-tab">
                 <br>
-                <!-- チャット機能のセクション -->
-                メッセージ
-                <div id="message-list">
-                    {% for message in messages %}
-                        <div class="message-item">
-                            <strong><a href="{% url 'account' username=message.sender.username %}">{{ message.sender.username }}</a></strong>: {{ message.text }}
-                        </div>
-                    {% endfor %}
-                </div>
-                <br>
-                <form method="post">
-                    {% csrf_token %}
-                    {{ message_form.as_p }}
-                    <button type="submit" class="btn btn-primary">送信</button>
-                </form>
-                <br>
-                <br>
+                <p>{{ project.description|linebreaksbr }}</p>
+                {% if is_participant %}
+                    <form action="{% url 'edit_project_description' project.id %}" method="post">
+                        {% csrf_token %}
+                        <input type="submit" value="プロジェクト憲章を編集する" class="btn btn-primary"/>
+                    </form>
+                {% endif %}
             </div>
 
             <!-- ロードマップタブ -->
@@ -132,7 +122,10 @@
                 <!-- ゴールとマイルストーンの表示 -->
                 {% for goal_data in goals_with_milestones %}
                     {% if is_participant %}
-                        <a href="{% url 'milestone_create' goal_data.goal.id %}"><h3>{{ goal_data.goal.text }}</h3></a>
+                        <h3 style="display: inline;">{{ goal_data.goal.text }}</h3>
+                        <form action="{% url 'milestone_create' goal_data.goal.id %}" style="display: inline; margin-left: 10px;">
+                            <input type="submit" value="マイルストーンを追加" class="btn btn-primary btn-sm">
+                        </form>
                     {% else %}
                         <h3>{{ goal_data.goal.text }}</h3>
                     {% endif %}
@@ -153,22 +146,41 @@
                     </div>
                 {% endfor %}
                 <br>
-                <button id="edit-roadmap-btn" class="btn btn-primary">ロードマップを編集</button>
-                <button id="save-roadmap-btn" class="btn btn-success" style="display:none;">編集を終了</button>
+                <!-- マイルストーンがある場合にのみ並び替えボタンを表示 -->
+                {% if goals_with_milestones %}
+                    {% for goal_data in goals_with_milestones %}
+                        {% if goal_data.milestones %}
+                            <button id="edit-roadmap-btn" class="btn btn-primary">マイルストーンを並び替え</button>
+                            <button id="save-roadmap-btn" class="btn btn-success" style="display:none;">並び替えを終了</button>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
                 <br>
                 <br>
             </div>
 
-            <!-- プロジェクト憲章タブ -->
-            <div class="tab-pane fade" id="charter" role="tabpanel" aria-labelledby="charter-tab">
+            <!-- overviewタブ -->
+            <div class="tab-pane fade" id="overview" role="tabpanel" aria-labelledby="overview-tab">
                 <br>
-                <p>{{ project.description|linebreaksbr }}</p>
-                {% if is_participant %}
-                    <form action="{% url 'edit_project_description' project.id %}" method="post">
-                        {% csrf_token %}
-                        <input type="submit" value="プロジェクト憲章を編集する" class="btn btn-primary"/>
-                    </form>
-                {% endif %}
+                <!-- 完了したマイルストーン -->
+
+                <!-- チャット機能のセクション -->
+                <h5>メッセージ</h5>
+                <div id="message-list">
+                    {% for message in messages %}
+                        <div class="message-item">
+                            <strong><a href="{% url 'account' username=message.sender.username %}">{{ message.sender.username }}</a></strong>: {{ message.text }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <br>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ message_form.as_p }}
+                    <button type="submit" class="btn btn-primary">送信</button>
+                </form>
+                <br>
+                <br>
             </div>
         </div>
     </div>
