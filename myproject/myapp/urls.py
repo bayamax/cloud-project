@@ -80,4 +80,6 @@ urlpatterns = [
     
     path('update_milestone_order/', update_milestone_order, name='update_milestone_order'),
     
+    path('milestone/deny/<int:pk>/', views.DenyMilestoneView.as_view(), name='deny_milestone'),
+    
 ]

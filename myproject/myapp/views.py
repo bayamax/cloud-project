@@ -225,6 +225,15 @@ class CompleteMilestoneView(LoginRequiredMixin, View):
             milestone.save()
         return redirect('project_detail', pk=milestone.goal.project.id)
 
+# views.py
+class DenyMilestoneView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        milestone = get_object_or_404(Milestone, pk=pk)
+        if milestone.assigned_to == request.user:
+            milestone.status = 'not_started'
+            milestone.save()
+        return redirect('project_detail', pk=milestone.goal.project.id)
+
 # プロジェクト参加者のビュー（ログイン不要）
 def project_participants(request, pk):
     project = get_object_or_404(Project, id=pk)

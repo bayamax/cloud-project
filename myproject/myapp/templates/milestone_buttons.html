@@ -26,6 +26,10 @@
             {% csrf_token %}
             <input type="submit" value="accept" class="btn btn-info btn-sm">
         </form>
+        <form action="{% url 'deny_milestone' milestone.id %}" method="post" style="display: inline;">
+            {% csrf_token %}
+            <input type="submit" value="×" class="btn btn-danger btn-sm">
+        </form>
     {% endif %}
 
     <!-- 完了したマイルストーンのユーザー名表示（一番右に表示） -->
