@@ -28,7 +28,7 @@
         </form>
         <form action="{% url 'deny_milestone' milestone.id %}" method="post" style="display: inline;">
             {% csrf_token %}
-            <input type="submit" value="×" class="btn btn-danger btn-sm">
+            <input type="submit" value="reject" class="btn btn-danger btn-sm">
         </form>
     {% endif %}
 
