@@ -156,13 +156,15 @@
                 {% endfor %}
                 <br>
                 <!-- マイルストーンがある場合にのみ並び替えボタンを表示 -->
-                {% if goals_with_milestones %}
-                    {% for goal_data in goals_with_milestones %}
-                        {% if goal_data.milestones %}
-                            <button id="edit-roadmap-btn" class="btn btn-primary">マイルストーンを並び替え</button>
-                            <button id="save-roadmap-btn" class="btn btn-success" style="display:none;">並び替えを終了</button>
-                        {% endif %}
-                    {% endfor %}
+                {% if is_participant %}
+                    {% if goals_with_milestones %}
+                        {% for goal_data in goals_with_milestones %}
+                            {% if goal_data.milestones %}
+                                <button id="edit-roadmap-btn" class="btn btn-primary">マイルストーンを並び替え</button>
+                                <button id="save-roadmap-btn" class="btn btn-success" style="display:none;">並び替えを終了</button>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
                 {% endif %}
                 <br>
                 <br>
