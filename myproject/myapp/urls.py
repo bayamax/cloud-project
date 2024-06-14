@@ -82,4 +82,5 @@ urlpatterns = [
     
     path('milestone/deny/<int:pk>/', views.DenyMilestoneView.as_view(), name='deny_milestone'),
     
+    path('project/<int:pk>/add_github_url/', views.add_github_url, name='add_github_url'),
 ]

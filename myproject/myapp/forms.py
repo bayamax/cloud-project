@@ -61,4 +61,15 @@ class ProjectDescriptionForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = ['description']
+
+from django import forms
+from .models import Project
+
+class GitHubURLForm(forms.ModelForm):
+    class Meta:
+        model = Project
+        fields = ['github_url']
+        widgets = {
+            'github_url': forms.URLInput(attrs={'placeholder': 'https://github.com/owner/repo'})
+        }
  

@@ -358,3 +358,20 @@ def update_milestone_order(request):
         return JsonResponse({'status': 'success'})
 
     return JsonResponse({'status': 'failure'}, status=400)
+
+# views.py
+
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import Project
+from .forms import GitHubURLForm
+
+def add_github_url(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    if request.method == 'POST':
+        form = GitHubURLForm(request.POST, instance=project)
+        if form.is_valid():
+            form.save()
+            return redirect('project_detail', pk=project.pk)
+    else:
+        form = GitHubURLForm(instance=project)
+    return render(request, 'add_github_url_form.html', {'form': form, 'project': project})
