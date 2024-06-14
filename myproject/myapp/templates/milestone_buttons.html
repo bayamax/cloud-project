@@ -12,8 +12,8 @@
         <input type="submit" value="−" class="btn btn-danger btn-sm">
     </form>
 
-    <!-- 着手ボタン（まだ着手していない場合のみ表示） -->
-    {% if milestone.status == 'not_started' %}
+    <!-- 着手ボタン（まだ着手していない場合のみ表示、子マイルストーンが存在しない場合のみ） -->
+    {% if milestone.status == 'not_started' and not milestone.child_milestones.exists %}
         <form action="{% url 'start_milestone' milestone.id %}" method="post" style="display: inline;">
             {% csrf_token %}
             <input type="submit" value="✔️" class="btn btn-primary btn-sm">
@@ -26,6 +26,7 @@
             {% csrf_token %}
             <input type="submit" value="accept" class="btn btn-info btn-sm">
         </form>
+        <!-- 否認ボタン -->
         <form action="{% url 'deny_milestone' milestone.id %}" method="post" style="display: inline;">
             {% csrf_token %}
             <input type="submit" value="reject" class="btn btn-danger btn-sm">
