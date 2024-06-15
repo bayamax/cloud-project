@@ -1,19 +1,11 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZSLCXGK3Q"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-
-        gtag('config', 'G-CZSLCXGK3Q');
-    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ project.title }}</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             background-color: #f8f9fa;
@@ -93,31 +85,19 @@
         <!-- タブメニュー -->
         <ul class="nav nav-tabs" id="projectTabs" role="tablist">
             <li class="nav-item">
-                <a class="nav-link active" id="charter-tab" data-toggle="tab" href="#charter" role="tab" aria-controls="charter" aria-selected="true">プロジェクト憲章</a>
+                <a class="nav-link active" id="roadmap-tab" data-toggle="tab" href="#roadmap" role="tab" aria-controls="roadmap" aria-selected="true">ロードマップ</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" id="roadmap-tab" data-toggle="tab" href="#roadmap" role="tab" aria-controls="roadmap" aria-selected="false">ロードマップ</a>
+                <a class="nav-link" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="false">ダッシュボード</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="false">チャット</a>
+                <a class="nav-link" id="charter-tab" data-toggle="tab" href="#charter" role="tab" aria-controls="charter" aria-selected="false">プロジェクト憲章</a>
             </li>
         </ul>
 
         <div class="tab-content" id="projectTabsContent">
-            <!-- プロジェクト憲章タブ -->
-            <div class="tab-pane fade show active" id="charter" role="tabpanel" aria-labelledby="charter-tab">
-                <br>
-                <p>{{ project.description|linebreaksbr }}</p>
-                {% if is_participant %}
-                    <form action="{% url 'edit_project_description' project.id %}" method="post">
-                        {% csrf_token %}
-                        <input type="submit" value="プロジェクト憲章を編集する" class="btn btn-primary"/>
-                    </form>
-                {% endif %}
-            </div>
-
             <!-- ロードマップタブ -->
-            <div class="tab-pane fade" id="roadmap" role="tabpanel" aria-labelledby="roadmap-tab">
+            <div class="tab-pane fade show active" id="roadmap" role="tabpanel" aria-labelledby="roadmap-tab">
                 <br>
                 {% if not project.goals.all %}
                     {% if is_participant %}
@@ -174,6 +154,10 @@
             <div class="tab-pane fade" id="overview" role="tabpanel" aria-labelledby="overview-tab">
                 <br>
                 <!-- githubのリンク -->
+                <h5>プロジェクトの進捗</h5>
+                <canvas id="progressChart" width="300" height="300"></canvas>
+                <br>
+                <br>
                 {% if project.github_url %}
                 <p>GitHubリポジトリ: <a href="{{ project.github_url }}" target="_blank">{{ project.github_url }}</a></p>
                 {% else %}
@@ -182,7 +166,8 @@
                     <a href="{% url 'add_github_url' project.id %}" class="btn btn-primary">GitHub URLを追加</a>
                 {% endif %}
                 {% endif %}
-
+                <br>
+                <br>
                 <!-- チャット機能のセクション -->
                 <h5>メッセージ</h5>
                 <div id="message-list">
@@ -201,62 +186,54 @@
                 <br>
                 <br>
             </div>
+
+            <!-- プロジェクト憲章タブ -->
+            <div class="tab-pane fade" id="charter" role="tabpanel" aria-labelledby="charter-tab">
+                <br>
+                <p>{{ project.description|linebreaksbr }}</p>
+                {% if is_participant %}
+                    <form action="{% url 'edit_project_description' project.id %}" method="post">
+                        {% csrf_token %}
+                        <input type="submit" value="プロジェクト憲章を編集する" class="btn btn-primary"/>
+                    </form>
+                {% endif %}
+            </div>
         </div>
     </div>
 
-
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const editButton = document.getElementById('edit-roadmap-btn');
-            const saveButton = document.getElementById('save-roadmap-btn');
-
-            function updateOrderAndParentId() {
-                let order = [];
-                document.querySelectorAll('.milestone[data-id]').forEach(function (item, index) {
-                    const parentElement = item.closest('.milestone[data-id]:not([data-id="' + item.getAttribute('data-id') + '"])');
-                    const parentId = parentElement ? parentElement.getAttribute('data-id') : null;
-                    order.push({
-                        id: item.getAttribute('data-id'),
-                        order: index,
-                        parent_id: parentId ? parentId : null
-                    });
-                });
-
-                console.log(order);  // ログに出力
-
-                fetch('{% url "update_milestone_order" %}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify({order: order})
-                }).then(response => {
-                    if (response.ok) {
-                        location.reload();
-                    }
-                });
-            }
-
-            if (editButton && saveButton) {
-                editButton.addEventListener('click', function() {
-                    document.querySelectorAll('[id^="milestones-list-"]').forEach(function(list) {
-                        new Sortable(list, {
-                            group: 'milestones',
-                            animation: 150,
-                            onEnd: function (evt) {
-                                // ドラッグアンドドロップ後の処理
+        document.addEventListener('DOMContentLoaded', function () {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            const totalCompletedPoints = {{ total_completed_points }};
+            const progressData = {
+                datasets: [{
+                    data: [totalCompletedPoints, 1 - totalCompletedPoints],
+                    backgroundColor: ['#007bff', '#e9ecef']
+                }],
+                labels: ['Completed', 'Remaining']
+            };
+        
+            const config = {
+                type: 'doughnut',
+                data: progressData,
+                options: {
+                    responsive: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return tooltipItem.label + ': ' + Math.round(tooltipItem.raw * 100) + '%';
+                                }
                             }
-                        });
-                    });
-                    editButton.style.display = 'none';
-                    saveButton.style.display = 'block';
-                });
-
-                saveButton.addEventListener('click', function() {
-                    updateOrderAndParentId();
-                });
-            }
+                        }
+                    }
+                }
+            };
+        
+            new Chart(ctx, config);
         });
     </script>
     

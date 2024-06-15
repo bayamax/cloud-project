@@ -46,6 +46,13 @@ class ProjectDetailView(DetailView):
             context['message_form'] = MessageForm()
             context['messages'] = Message.objects.filter(project=self.object).order_by('-created_at')
         
+        total_completed_points = Milestone.objects.filter(
+            goal__project=self.object,
+            child_milestones__isnull=True,
+            status='completed'
+        ).aggregate(total_points=Sum('points'))['total_points'] or 0
+        context['total_completed_points'] = total_completed_points
+        
         return context
 
     @method_decorator(login_required)
