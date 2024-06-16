@@ -50,6 +50,12 @@
         }
         .milestone {
             cursor: move;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .milestone .milestone {
+            margin-left: 20px;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -142,6 +148,7 @@
                             {% if goal_data.milestones %}
                                 <button id="edit-roadmap-btn" class="btn btn-primary">マイルストーンを並び替え</button>
                                 <button id="save-roadmap-btn" class="btn btn-success" style="display:none;">並び替えを終了</button>
+                            {% else %}
                             {% endif %}
                         {% endfor %}
                     {% endif %}
@@ -202,6 +209,59 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const editButton = document.getElementById('edit-roadmap-btn');
+            const             saveButton = document.getElementById('save-roadmap-btn');
+
+            function updateOrderAndParentId() {
+                let order = [];
+                document.querySelectorAll('.milestone[data-id]').forEach(function (item, index) {
+                    const parentElement = item.closest('.milestone[data-id]:not([data-id="' + item.getAttribute('data-id') + '"])');
+                    const parentId = parentElement ? parentElement.getAttribute('data-id') : null;
+                    order.push({
+                        id: item.getAttribute('data-id'),
+                        order: index,
+                        parent_id: parentId ? parentId : null
+                    });
+                });
+
+                console.log(order);  // ログに出力
+
+                fetch('{% url "update_milestone_order" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({order: order})
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    }
+                });
+            }
+
+            if (editButton && saveButton) {
+                editButton.addEventListener('click', function() {
+                    document.querySelectorAll('[id^="milestones-list-"]').forEach(function(list) {
+                        new Sortable(list, {
+                            group: 'milestones',
+                            animation: 150,
+                            onEnd: function (evt) {
+                                // ドラッグアンドドロップ後の処理
+                            }
+                        });
+                    });
+                    editButton.style.display = 'none';
+                    saveButton.style.display = 'block';
+                });
+
+                saveButton.addEventListener('click', function() {
+                    updateOrderAndParentId();
+                });
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', function () {
             const ctx = document.getElementById('progressChart').getContext('2d');
             const totalCompletedPoints = {{ total_completed_points }};
@@ -212,7 +272,7 @@
                 }],
                 labels: ['Completed', 'Remaining']
             };
-        
+
             const config = {
                 type: 'doughnut',
                 data: progressData,
@@ -232,11 +292,11 @@
                     }
                 }
             };
-        
+
             new Chart(ctx, config);
         });
     </script>
-    
+
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
 </body>
