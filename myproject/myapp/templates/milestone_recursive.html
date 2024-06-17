@@ -1,6 +1,6 @@
 {% with milestones=milestone.child_milestones.all|dictsort:"order" %}
 {% for child in milestones %}
-    <div class="milestone" data-id="{{ child.id }}" data-parent-id="{{ milestone.id }}" style="margin-left: 20px;">
+    <div class="milestone" data-id="{{ child.id }}" data-parent-id="{{ milestone.id }}">
         {{ child.text }} - Points: {{ child.points | floatformat:2 }}
         {% if is_participant %}
             {% include 'milestone_buttons.html' with milestone=child %}
