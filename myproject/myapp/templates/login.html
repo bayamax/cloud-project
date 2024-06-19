@@ -47,6 +47,8 @@
             {{ form.as_p }}
             <button type="submit" class="btn btn-primary">Login</button>
         </form>
+        <hr>
+        <a href="{% url 'social:begin' 'github' %}" class="btn btn-dark btn-block">Login with GitHub</a>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>

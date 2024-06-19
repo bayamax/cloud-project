@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'myapp',
+    'social_django',
 ]
 
 MIDDLEWARE = [
@@ -70,6 +71,17 @@ TEMPLATES = [
     },
 ]
 
+AUTHENTICATION_BACKENDS = ('social_core.backends.github.GithubOAuth2',)
+
+SOCIAL_AUTH_GITHUB_KEY = 'Ov23li6PvXuRIhNXkIIU'
+SOCIAL_AUTH_GITHUB_SECRET = '0a4c121a9a7e59f3b838f2f8d7113ef43b81cf23'
+
+# URLの設定
+LOGIN_URL = 'login'
+LOGOUT_URL = 'logout'
+LOGIN_REDIRECT_URL = 'project_list'
+LOGOUT_REDIRECT_URL = 'login'
+
 
 
 WSGI_APPLICATION = 'myproject.wsgi.application'
@@ -77,15 +89,15 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-import dj_database_url
+#import dj_database_url
 import os
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL')
-    )
+#DATABASES = {
+#    'default': dj_database_url.config(
+#        default=os.environ.get('DATABASE_URL')
+#    )
 
- }
+# }
 
 from pathlib import Path
 
@@ -93,12 +105,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 #Database
-#DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.sqlite3',
-#        'NAME': BASE_DIR / 'db.sqlite3',  # 正しくパスを結合
-#    }
-#}
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',  # 正しくパスを結合
+    }
+}
 
 #DATABASES['default']['ENGINE'] = 'django.db.backends.postgresql'
 
@@ -152,3 +164,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+SOCIAL_AUTH_PIPELINE = (
+    'social_core.pipeline.social_auth.social_details',
+    'social_core.pipeline.social_auth.social_uid',
+    'social_core.pipeline.social_auth.auth_allowed',
+    'social_core.pipeline.social_auth.social_user',
+    'social_core.pipeline.user.get_username',
+    'social_core.pipeline.user.create_user',
+    'social_core.pipeline.social_auth.associate_user',
+    'social_core.pipeline.social_auth.load_extra_data',
+    'social_core.pipeline.user.user_details',
+    'myapp.pipeline.save_github_username',  # カスタムパイプライン関数
+)
