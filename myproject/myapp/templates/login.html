@@ -14,7 +14,8 @@
             height: 100%;
         }
         .bg-blue {
-            background-color: #007bff; /* Bootstrapのプライマリーカラー */
+            /*background-color: #007bff;  ヘッダーの背景色 */
+            background-image: linear-gradient(90deg, rgba(40, 0, 255, 1), rgba(255, 160, 71, 1));
             color: white;
             display: flex;
             flex-direction: column;
@@ -38,7 +39,11 @@
 <body>
     <div class="full-height bg-blue">
         <div class="welcome-message">ようこそ</div>
-        <div class="sub-message">楽しいみんなが待っています</div>
+        <div class="sub-message">「千里の道も一歩から」<br>
+                                　私たちが当たり前の様に使っているサービスやプロダクトも<br>
+                                　小さな一歩から始まりました。<br>
+                                　世界を変えるには一歩踏み出す事が大事です。<br>
+                                　是非一緒に踏み出してみませんか？</div>
     </div>
     <div class="container login-form">
         <h2>Login</h2>

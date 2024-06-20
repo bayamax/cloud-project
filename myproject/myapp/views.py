@@ -227,7 +227,8 @@ class StartMilestoneView(LoginRequiredMixin, View):
 class CompleteMilestoneView(LoginRequiredMixin, View):
     def post(self, request, pk):
         milestone = get_object_or_404(Milestone, pk=pk)
-        if milestone.assigned_to == request.user:
+        project = milestone.goal.project
+        if request.user == project.owner:
             milestone.status = 'completed'
             milestone.save()
         return redirect('project_detail', pk=milestone.goal.project.id)
