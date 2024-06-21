@@ -25,46 +25,68 @@ class SignUpView(generic.CreateView):
 # プロジェクトリストビュー（ログイン不要）
 # myapp/views.py
 # myapp/views.py
-from django.views.generic import ListView, DetailView, CreateView
+# views.py
+# views.py
+from django.shortcuts import render, get_object_or_404, redirect
+from django.views import View
 from .models import Project, Thread, ThreadMessage
 from .forms import ThreadForm, ThreadMessageForm
 
-class ProjectListView(ListView):
-    model = Project
-    template_name = "project_list.html"
-    context_object_name = 'projects'
+class ProjectListView(View):
+    def get(self, request):
+        projects = Project.objects.all()
+        threads = Thread.objects.all().order_by('-created_at')
+        thread_form = ThreadForm()
+        return render(request, 'project_list.html', {
+            'projects': projects,
+            'threads': threads,
+            'thread_form': thread_form,
+        })
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['threads'] = Thread.objects.all()
-        context['thread_form'] = ThreadForm()
-        return context
+    def post(self, request):
+        form = ThreadForm(request.POST)
+        if form.is_valid():
+            form.save()
+        return redirect('project_list')
 
-class ThreadDetailView(DetailView):
-    model = Thread
-    template_name = 'thread_detail.html'
-    context_object_name = 'thread'
+class ThreadDetailView(View):
+    def get(self, request, pk):
+        thread = get_object_or_404(Thread, pk=pk)
+        messages = thread.messages.all().order_by('-created_at')
+        message_form = ThreadMessageForm()
+        return render(request, 'thread_detail.html', {
+            'thread': thread,
+            'messages': messages,
+            'message_form': message_form,
+        })
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['messages'] = ThreadMessage.objects.filter(thread=self.object).order_by('created_at')
-        context['form'] = ThreadMessageForm()
-        return context
+    def post(self, request, pk):
+        thread = get_object_or_404(Thread, pk=pk)
+        form = ThreadMessageForm(request.POST)
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.thread = thread
+            if request.user.is_authenticated:
+                message.sender = request.user
+            message.save()
+        return redirect('thread_detail', pk=pk)
 
-class ThreadMessageCreateView(CreateView):
-    model = ThreadMessage
-    form_class = ThreadMessageForm
-    template_name = 'thread_detail.html'
+from django.shortcuts import render, get_object_or_404, redirect
+from django.views import View
+from .models import Thread, ThreadMessage
+from .forms import ThreadForm, ThreadMessageForm
 
-    def form_valid(self, form):
-        form.instance.thread = get_object_or_404(Thread, pk=self.kwargs['pk'])
-        if self.request.user.is_authenticated:
-            form.instance.sender = self.request.user
-        return super().form_valid(form)
+class ThreadListView(View):
+    def get(self, request):
+        threads = Thread.objects.all().order_by('-created_at')
+        thread_form = ThreadForm()
+        return render(request, 'thread_list.html', {'threads': threads, 'thread_form': thread_form})
 
-    def get_success_url(self):
-        return self.request.path_info
-
+    def post(self, request):
+        form = ThreadForm(request.POST)
+        if form.is_valid():
+            form.save()
+        return redirect('thread_list')
 # プロジェクト詳細ビュー（ログイン不要）
 class ProjectDetailView(DetailView):
     model = Project
@@ -423,20 +445,4 @@ def add_github_url(request, pk):
     return render(request, 'add_github_url_form.html', {'form': form, 'project': project})
 
 
-# views.py
-from django.shortcuts import render, get_object_or_404, redirect
-from django.views import View
-from .models import Thread, ThreadMessage
-from .forms import ThreadForm, ThreadMessageForm
 
-class ThreadListView(View):
-    def get(self, request):
-        threads = Thread.objects.all().order_by('-created_at')
-        thread_form = ThreadForm()
-        return render(request, 'thread_list.html', {'threads': threads, 'thread_form': thread_form})
-
-    def post(self, request):
-        form = ThreadForm(request.POST)
-        if form.is_valid():
-            form.save()
-        return redirect('thread_list')
