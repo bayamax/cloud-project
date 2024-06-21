@@ -1,0 +1,26 @@
+<!-- thread_list.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>スレッド一覧</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>スレッド一覧</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ thread_form.as_p }}
+            <button type="submit" class="btn btn-primary">スレッドを作成</button>
+        </form>
+        <ul class="list-group mt-3">
+            {% for thread in threads %}
+                <li class="list-group-item">
+                    <a href="{% url 'thread_detail' thread.pk %}">{{ thread.title }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>

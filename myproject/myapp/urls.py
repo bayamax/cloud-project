@@ -25,6 +25,8 @@ from .views import project_description_update,project_description_form
 #from .views import update_project_description
 from django.urls import path
 from .views import update_milestone_order
+from django.urls import path
+from .views import ThreadListView, ThreadDetailView
 
 
 urlpatterns = [
@@ -83,4 +85,6 @@ urlpatterns = [
     path('milestone/deny/<int:pk>/', views.DenyMilestoneView.as_view(), name='deny_milestone'),
     
     path('project/<int:pk>/add_github_url/', views.add_github_url, name='add_github_url'),
+    
+    path('thread/<int:pk>/', ThreadDetailView.as_view(), name='thread_detail'),
 ]

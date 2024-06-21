@@ -72,4 +72,19 @@ class GitHubURLForm(forms.ModelForm):
         widgets = {
             'github_url': forms.URLInput(attrs={'placeholder': 'https://github.com/owner/repo'})
         }
+
+
+# forms.py
+from django import forms
+from .models import Thread, ThreadMessage
+
+class ThreadForm(forms.ModelForm):
+    class Meta:
+        model = Thread
+        fields = ['title']
+
+class ThreadMessageForm(forms.ModelForm):
+    class Meta:
+        model = ThreadMessage
+        fields = ['text']
  

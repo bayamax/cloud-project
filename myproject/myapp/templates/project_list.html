@@ -32,8 +32,7 @@
             margin-left: auto;
         }
         .navbar {
-            /*background-color: #007bff;  ヘッダーの背景色 */
-           background-image: linear-gradient(90deg, rgba(40, 0, 255, 1), rgba(255, 160, 71, 1));
+            background-image: linear-gradient(90deg, rgba(40, 0, 255, 1), rgba(255, 160, 71, 1));
         }
         .create-project-button {
             display: block;
@@ -48,13 +47,6 @@
         }
         .create-project-button:hover {
             background-color: #0056b3;
-        }
-        .header-image {
-            height: 40px; /* イメージの高さを調整 */
-            margin-right: 10px; /* ブランド名との間隔 */
-        }
-        .navbar {
-            background-color: #007bff; /* 背景色 */
         }
     </style>
 </head>
@@ -85,25 +77,58 @@
         {% if user.is_authenticated %}
             <a href="{% url 'project_create' %}" class="create-project-button mb-3">新しいプロジェクトを作成</a>
         {% endif %}
-        <div class="table-responsive">
-            <table class="table table-bordered">
-                <thead class="thead-dark">
-                    <tr>
-                        <th scope="col">プロジェクト名</th>
-                        <th scope="col">オーナー</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for project in object_list %}
-                        <tr>
-                            <td><a href="{% url 'project_detail' project.id %}" class="text-primary">{{ project.title }}</a></td>
-                            <td>{{ project.owner.username }}</td>
-                        </tr>
+        
+        <!-- タブメニュー -->
+        <ul class="nav nav-tabs" id="projectTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="threads-tab" data-toggle="tab" href="#threads" role="tab" aria-controls="threads" aria-selected="true">クリエーションラボ</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="projects-tab" data-toggle="tab" href="#projects" role="tab" aria-controls="projects" aria-selected="false">プロジェクトリスト</a>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="projectTabsContent">
+            <br>
+            <h5>意見を交換しテーマを決めよう</h5>
+            <br>
+            <div class="tab-pane fade show active" id="threads" role="tabpanel" aria-labelledby="threads-tab">
+                <form method="post" action="{% url 'project_list' %}">
+                    {% csrf_token %}
+                    {{ thread_form.as_p }}
+                    <button type="submit" class="btn btn-primary">部屋を作る</button>
+                </form>
+                <ul class="list-group mt-3">
+                    {% for thread in threads %}
+                        <li class="list-group-item">
+                            <a href="{% url 'thread_detail' thread.pk %}">{{ thread.title }}</a>
+                        </li>
                     {% endfor %}
-                </tbody>
-            </table>
+                </ul>
+            </div>
+            <div class="tab-pane fade" id="projects" role="tabpanel" aria-labelledby="projects-tab">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th scope="col">プロジェクト名</th>
+                                <th scope="col">オーナー</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for project in projects %}
+                                <tr>
+                                    <td><a href="{% url 'project_detail' project.id %}" class="text-primary">{{ project.title }}</a></td>
+                                    <td>{{ project.owner.username }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
+
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.9.9/dist/umd/popper.min.js"></script>
