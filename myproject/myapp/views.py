@@ -88,51 +88,31 @@ class ThreadListView(View):
             form.save()
         return redirect('thread_list')
 # プロジェクト詳細ビュー（ログイン不要）
+# views.py
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views.generic import DetailView
+from django.http import HttpResponseForbidden
+from .models import Project, Message, Goal, Milestone
+from .forms import MessageForm
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Sum
+
 class ProjectDetailView(DetailView):
     model = Project
     template_name = 'project_detail.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        project = self.object
-
-        user = self.request.user
-        is_authenticated = user.is_authenticated
-        has_owner = project.owner is not None
-
-        if is_authenticated:
-            is_participant = user in project.participants.all()
-        else:
-            is_participant = not has_owner
-
-        context['is_participant'] = is_participant
-
-        goals_with_milestones = []
-        for goal in project.goals.all():
-            milestones = goal.milestones.filter(parent_milestone__isnull=True).order_by('order')
-            goals_with_milestones.append({'goal': goal, 'milestones': milestones})
-        context['goals_with_milestones'] = goals_with_milestones
-
-        if is_authenticated or not has_owner:
-            context['message_form'] = MessageForm()
-            context['messages'] = Message.objects.filter(project=project).order_by('-created_at')
-        else:
-            context['messages'] = Message.objects.filter(project=project).order_by('-created_at')
-
-        total_completed_points = Milestone.objects.filter(
-            goal__project=project,
-            child_milestones__isnull=True,
-            status='completed'
-        ).aggregate(total_points=Sum('points'))['total_points'] or 0
-        context['total_completed_points'] = total_completed_points
-
-        return context
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        context = self.get_context_data(object=self.object)
+        return self.render_to_response(context)
 
     def post(self, request, *args, **kwargs):
         project = self.get_object()
         has_owner = project.owner is not None
 
-        if not request.user.is_authenticated and has_owner:
+        # オーナーがいる場合、匿名ユーザーはメッセージを投稿できない
+        if has_owner and not request.user.is_authenticated:
             return redirect('login')
 
         context = self.get_context_data(object=project)
@@ -144,13 +124,57 @@ class ProjectDetailView(DetailView):
             if request.user.is_authenticated:
                 new_message.sender = request.user
             else:
-                new_message.sender = None
+                new_message.sender = None  # 匿名ユーザーの場合
             new_message.save()
             context['message_form'] = MessageForm()
         else:
             context['message_form'] = message_form
 
         return self.render_to_response(context)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        project = self.object
+        user = self.request.user
+        is_authenticated = user.is_authenticated
+        has_owner = project.owner is not None
+
+        # ユーザーが参加者かどうかの判定
+        if has_owner:
+            is_participant = is_authenticated and user in project.participants.all()
+        else:
+            is_participant = True  # オーナーがいない場合、匿名ユーザーも参加者とみなす
+
+        context['is_participant'] = is_participant
+        context['project'] = project
+
+        # プロジェクトのゴールとマイルストーンを取得
+        goals = project.goals.all()
+        goals_with_milestones = []
+
+        for goal in goals:
+            milestones = goal.milestones.all().order_by('order')
+            goals_with_milestones.append({'goal': goal, 'milestones': milestones})
+
+        context['goals_with_milestones'] = goals_with_milestones
+
+        # メッセージフォーム
+        context['message_form'] = MessageForm()
+
+        # プロジェクトのメッセージ一覧
+        context['messages'] = project.messages.all().order_by('-created_at')
+
+        # 進捗状況の計算
+        total_points = Milestone.objects.filter(goal__project=project).aggregate(Sum('points'))['points__sum'] or 0
+        completed_points = Milestone.objects.filter(goal__project=project, status='completed').aggregate(Sum('points'))['points__sum'] or 0
+        context['total_points'] = total_points
+        context['completed_points'] = completed_points
+        if total_points > 0:
+            context['progress_percentage'] = int((completed_points / total_points) * 100)
+        else:
+            context['progress_percentage'] = 0
+
+        return context
 
 # プロジェクト作成ビュー（ログイン必要）
 # views.py
@@ -369,34 +393,21 @@ def project_participants(request, pk):
     return render(request, 'project_participants.html', context)
 
 # マイルストーン削除ビュー（ログイン必要）
-@login_required
+# views.py
+
 def delete_milestone(request, pk):
     milestone = get_object_or_404(Milestone, pk=pk)
-    project = milestone.goal.project  # プロジェクトオブジェクトを保存
+    project = milestone.goal.project
+    has_owner = project.owner is not None
 
-    if request.user not in project.participants.all():
-        # ユーザーがプロジェクトの参加者でなければリダイレクト
-        return redirect('project_detail', pk=project.pk)
+    if has_owner and not request.user.is_authenticated:
+        return redirect('login')
 
-    if request.method == 'POST':
-        with transaction.atomic():
-            # マイルストーンを削除
-            milestone.delete()
+    if has_owner and request.user != project.owner:
+        return HttpResponseForbidden()
 
-            # ポイント再計算処理
-            all_milestones = Milestone.objects.filter(goal=milestone.goal)
-            if all_milestones.exists():
-                num_children = all_milestones.filter(parent_milestone__isnull=True).count()
-                points_per_child = Decimal('1.0') / num_children if num_children else Decimal('1.0')
-                for ms in all_milestones:
-                    if ms.parent_milestone is None:
-                        ms.points = points_per_child
-                    else:
-                        num_siblings = ms.parent_milestone.child_milestones.count()
-                        ms.points = ms.parent_milestone.points / num_siblings if num_siblings else Decimal('0.0')
-                    ms.save()
-
-        return redirect('project_detail', pk=project.pk)
+    milestone.delete()
+    return redirect('project_detail', pk=project.id)
 
     # POSTでない場合は削除確認ページを表示
     #return render(request, 'milestone_confirm_delete.html', {'milestone': milestone})
@@ -437,36 +448,33 @@ from decimal import Decimal
 from .models import Milestone
 from django.db import transaction
 
-@csrf_exempt
+# views.py
+
+import json
+from django.http import JsonResponse
+
 def update_milestone_order(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        order = data.get('order', [])
+        project_id = data.get('project_id')
+        project = get_object_or_404(Project, id=project_id)
+        has_owner = project.owner is not None
 
-        with transaction.atomic():
-            for item in order:
-                milestone = Milestone.objects.get(id=item['id'])
-                milestone.order = item['order']
-                milestone.parent_milestone_id = item['parent_id'] if item['parent_id'] else None
-                milestone.save()
+        if has_owner and not request.user.is_authenticated:
+            return JsonResponse({'status': 'error', 'message': 'ログインが必要です。'}, status=403)
 
-            # ポイント再計算処理
-            for item in order:
-                milestone = Milestone.objects.get(id=item['id'])
-                goal_milestones = Milestone.objects.filter(goal=milestone.goal).order_by('order')
-                num_children = goal_milestones.filter(parent_milestone__isnull=True).count()
-                points_per_child = Decimal('1.0') / num_children if num_children else Decimal('1.0')
-                for ms in goal_milestones:
-                    if ms.parent_milestone is None:
-                        ms.points = points_per_child
-                    else:
-                        num_siblings = ms.parent_milestone.child_milestones.count()
-                        ms.points = ms.parent_milestone.points / num_siblings if num_siblings else Decimal('0.0')
-                    ms.save()
+        if has_owner and request.user != project.owner:
+            return JsonResponse({'status': 'error', 'message': '権限がありません。'}, status=403)
 
+        milestones = data.get('milestones', [])
+        for idx, milestone_data in enumerate(milestones):
+            milestone = Milestone.objects.get(id=milestone_data['id'])
+            milestone.order = idx
+            milestone.parent_milestone = Milestone.objects.get(id=milestone_data['parent_id']) if milestone_data['parent_id'] else None
+            milestone.save()
         return JsonResponse({'status': 'success'})
-
-    return JsonResponse({'status': 'failure'}, status=400)
+    else:
+        return JsonResponse({'status': 'error', 'message': '無効なリクエストです。'}, status=400)
 
 # views.py
 
