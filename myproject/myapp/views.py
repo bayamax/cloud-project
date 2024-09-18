@@ -265,38 +265,38 @@
         # ゴール作成ビュー（ログイン必要）
         # views.py
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic.edit import CreateView
-from django.urls import reverse
-from django.http import HttpResponseForbidden
-from .models import Project, Goal
+        from django.shortcuts import render, redirect, get_object_or_404
+        from django.views.generic.edit import CreateView
+        from django.urls import reverse
+        from django.http import HttpResponseForbidden
+        from .models import Project, Goal
 
-class GoalCreateView(CreateView):
-    model = Goal
-    fields = ['text']
-    template_name = 'goal_form.html'
+        class GoalCreateView(CreateView):
+            model = Goal
+            fields = ['text']
+            template_name = 'goal_form.html'
 
-    def dispatch(self, request, *args, **kwargs):
-        project = get_object_or_404(Project, pk=self.kwargs['pk'])
-        has_owner = project.owner is not None
+            def dispatch(self, request, *args, **kwargs):
+                project = get_object_or_404(Project, pk=self.kwargs['pk'])
+                has_owner = project.owner is not None
 
-        # オーナーがいる場合、匿名ユーザーはゴールを追加できない
-        if has_owner and not request.user.is_authenticated:
-            return redirect('login')
+                # オーナーがいる場合、匿名ユーザーはゴールを追加できない
+                if has_owner and not request.user.is_authenticated:
+                    return redirect('login')
 
-        # オーナーがいる場合、ログインユーザーが参加者でないと追加できない
-        if has_owner and request.user not in project.participants.all():
-            return HttpResponseForbidden()
+                # オーナーがいる場合、ログインユーザーが参加者でないと追加できない
+                if has_owner and request.user not in project.participants.all():
+                    return HttpResponseForbidden()
 
-        self.project = project
-        return super().dispatch(request, *args, **kwargs)
+                self.project = project
+                return super().dispatch(request, *args, **kwargs)
 
-    def form_valid(self, form):
-        form.instance.project = self.project
-        return super().form_valid(form)
+            def form_valid(self, form):
+                form.instance.project = self.project
+                return super().form_valid(form)
 
-    def get_success_url(self):
-        return reverse('project_detail', args=[self.project.id])
+            def get_success_url(self):
+                return reverse('project_detail', args=[self.project.id])
         
         # マイルストーン作成ビュー（ログイン必要）
         class MilestoneCreateView(LoginRequiredMixin, CreateView):
@@ -513,9 +513,6 @@ class GoalCreateView(CreateView):
             else:
                 form = GitHubURLForm(instance=project)
             return render(request, 'add_github_url_form.html', {'form': form, 'project': project})
-        
-        
-        
         
         
         
