@@ -1,12 +1,12 @@
 {% with milestones=milestone.child_milestones.all|dictsort:"order" %}
 {% for child in milestones %}
     <div class="milestone" data-id="{{ child.id }}" data-parent-id="{{ milestone.id }}">
-        {{ child.text }} - Points: {{ child.points | floatformat:2 }}
-        {% if is_participant %}
-            {% include 'milestone_buttons.html' with milestone=child %}
-        {% endif %}
+        <div class="milestone-text">
+            {{ child.text }} - Points: {{ child.points | floatformat:2 }}
+            {% include 'milestone_buttons.html' with milestone=child is_participant=is_participant project=project %}
+        </div>
         <div id="milestones-list-{{ child.id }}">
-            {% include 'milestone_recursive.html' with milestone=child is_participant=is_participant %}
+            {% include 'milestone_recursive.html' with milestone=child is_participant=is_participant project=project %}
         </div>
     </div>
 {% endfor %}

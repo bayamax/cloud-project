@@ -11,16 +11,11 @@
             background-color: #f8f9fa;
         }
         .navbar {
-            background-color: #007bff;
-            color: white;
+            background-image: linear-gradient(90deg, rgba(40, 0, 255, 1), rgba(255, 160, 71, 1));
         }
         .container {
             max-width: 960px;
             margin-top: 20px;
-        }
-        .navbar {
-            /*background-color: #007bff;  ヘッダーの背景色 */
-           background-image: linear-gradient(90deg, rgba(40, 0, 255, 1), rgba(255, 160, 71, 1));
         }
         .btn-primary, .btn-secondary {
             margin-top: 10px;
@@ -29,9 +24,6 @@
             display: flex;
             align-items: center;
             gap: 20px;
-        }
-        .btn-primary:hover {
-            background-color: #0056b3;
         }
         #message-list {
             height: 200px;
@@ -48,10 +40,25 @@
             border-bottom: none;
         }
         .milestone {
-            cursor: move;
             padding: 5px;
             margin: 5px 0;
         }
+
+        .milestone-content {
+            display: flex;
+            align-items: center;
+        }
+
+        .milestone-text {
+            margin-right: 10px;
+        }
+
+        .milestone-buttons {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
         .milestone .milestone {
             margin-left: 20px;
         }
@@ -88,12 +95,21 @@
     <div class="container">
         <!-- タブメニュー -->
         <ul class="nav nav-tabs" id="projectTabs" role="tablist">
-            <li class="nav-item">
-                <a class="nav-link active" id="roadmap-tab" data-toggle="tab" href="#roadmap" role="tab" aria-controls="roadmap" aria-selected="true">ロードマップ</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="false">ダッシュボード</a>
-            </li>
+            {% if goals_with_milestones %}
+                <li class="nav-item">
+                    <a class="nav-link active" id="roadmap-tab" data-toggle="tab" href="#roadmap" role="tab" aria-controls="roadmap" aria-selected="true">ロードマップ</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="false">ダッシュボード</a>
+                </li>
+            {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" id="roadmap-tab" data-toggle="tab" href="#roadmap" role="tab" aria-controls="roadmap" aria-selected="false">ロードマップ</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">ダッシュボード</a>
+                </li>
+            {% endif %}
             <li class="nav-item">
                 <a class="nav-link" id="charter-tab" data-toggle="tab" href="#charter" role="tab" aria-controls="charter" aria-selected="false">プロジェクト憲章</a>
             </li>
@@ -101,8 +117,12 @@
 
         <div class="tab-content" id="projectTabsContent">
             <!-- ロードマップタブ -->
-            <div class="tab-pane fade show active" id="roadmap" role="tabpanel" aria-labelledby="roadmap-tab">
-                <br>
+            {% if goals_with_milestones %}
+                <div class="tab-pane fade show active" id="roadmap" role="tabpanel" aria-labelledby="roadmap-tab">
+            {% else %}
+                <div class="tab-pane fade" id="roadmap" role="tabpanel" aria-labelledby="roadmap-tab">
+            {% endif %}
+                <!-- ロードマップの内容 -->
                 {% if not project.goals.all %}
                     {% if is_participant %}
                         <form action="{% url 'goal_create' project.id %}" method="post">
@@ -126,16 +146,18 @@
                         {% for milestone in goal_data.milestones %}
                             {% if not milestone.parent_milestone %}
                                 <div class="milestone" data-id="{{ milestone.id }}" data-parent-id="">
-                                    {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
-                                    {% if is_participant %}
-                                        {% include 'milestone_buttons.html' with milestone=milestone %}
-                                    {% endif %}
-                                    <div id="milestones-list-{{ milestone.id }}">
-                                        {% include 'milestone_recursive.html' with milestone=milestone is_participant=is_participant %}
+                                    <div class="milestone-content">
+                                        <div class="milestone-text">
+                                            {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
+                                        </div>
+                                        {% include 'milestone_buttons.html' with milestone=milestone is_participant=is_participant project=project %}
                                     </div>
+                                <div id="milestones-list-{{ milestone.id }}">
+                                    {% include 'milestone_recursive.html' with milestone=milestone is_participant=is_participant project=project %}
                                 </div>
-                            {% endif %}
-                        {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
                     </div>
                 {% endfor %}
                 <br>
@@ -146,7 +168,6 @@
                             {% if goal_data.milestones %}
                                 <button id="edit-roadmap-btn" class="btn btn-primary">マイルストーンを並び替え</button>
                                 <button id="save-roadmap-btn" class="btn btn-success" style="display:none;">並び替えを終了</button>
-                            {% else %}
                             {% endif %}
                         {% endfor %}
                     {% endif %}
@@ -155,8 +176,12 @@
                 <br>
             </div>
 
-            <!-- チャット機能のタブ -->
-            <div class="tab-pane fade" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            <!-- ダッシュボードタブ -->
+            {% if not goals_with_milestones %}
+                <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            {% else %}
+                <div class="tab-pane fade" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            {% endif %}
                 <br>
                 <!-- githubのリンク -->
                 <h5>プロジェクトの進捗</h5>

@@ -12,6 +12,7 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プロジェクトリスト</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         table {
@@ -72,8 +73,8 @@
     </nav>
 
     <div class="container mt-5">
-        
-        <!-- タブメニュー -->
+        <!-- タブメニューを削除または非表示 -->
+        <!--
         <ul class="nav nav-tabs" id="projectTabs" role="tablist">
             <li class="nav-item">
                 <a class="nav-link active" id="threads-tab" data-toggle="tab" href="#threads" role="tab" aria-controls="threads" aria-selected="true">インタラクション</a>
@@ -82,49 +83,51 @@
                 <a class="nav-link" id="projects-tab" data-toggle="tab" href="#projects" role="tab" aria-controls="projects" aria-selected="false">プロジェクトリスト</a>
             </li>
         </ul>
+        -->
 
+        <!-- タブの内容を削除または非表示 -->
+        <!--
         <div class="tab-content" id="projectTabsContent">
             <div class="tab-pane fade show active" id="threads" role="tabpanel" aria-labelledby="threads-tab">
-                <br>
-                <h3>意見を交換してテーマを決めよう</h3>
-                <br>
-                <form method="post" action="{% url 'project_list' %}">
-                    {% csrf_token %}
-                    {{ thread_form.as_p }}
-                    <button type="submit" class="btn btn-primary">部屋を作成</button>
-                </form>
-                <ul class="list-group mt-3">
-                    {% for thread in threads %}
-                        <li class="list-group-item">
-                            <a href="{% url 'thread_detail' thread.pk %}">{{ thread.title }}</a>
-                        </li>
-                    {% endfor %}
-                </ul>
+                <!-- インタラクションタブの内容を削除 -->
+            <!--
             </div>
             <div class="tab-pane fade" id="projects" role="tabpanel" aria-labelledby="projects-tab">
-                {% if user.is_authenticated %}
-                <a href="{% url 'project_create' %}" class="create-project-button mb-3">新しいプロジェクトを作成</a>
-                {% endif %}
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead class="thead-dark">
-                            <tr>
-                                <th scope="col">プロジェクト名</th>
-                                <th scope="col">オーナー</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for project in projects %}
-                                <tr>
-                                    <td><a href="{% url 'project_detail' project.id %}" class="text-primary">{{ project.title }}</a></td>
-                                    <td>{{ project.owner.username }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+        -->
+        <!-- 直接プロジェクトリストを表示 -->
+        {% if user.is_authenticated %}
+        <a href="{% url 'project_create' %}" class="create-project-button mb-3">新しいプロジェクトを作成</a>
+        {% else %}
+        <a href="{% url 'project_create' %}" class="create-project-button mb-3">新しいプロジェクトを作成</a>
+        {% endif %}
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col">プロジェクト名</th>
+                        <th scope="col">オーナー</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                        <tr>
+                            <td><a href="{% url 'project_detail' project.id %}" class="text-primary">{{ project.title }}</a></td>
+                            <td>
+                                {% if project.owner %}
+                                    {{ project.owner.username }}
+                                {% else %}
+                                    Unknown
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!--
             </div>
         </div>
+        -->
     </div>
 
 

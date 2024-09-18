@@ -94,46 +94,69 @@ class ProjectDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['is_participant'] = self.request.user in self.object.participants.all() if self.request.user.is_authenticated else False
-        
+        project = self.object
+
+        user = self.request.user
+        is_authenticated = user.is_authenticated
+        has_owner = project.owner is not None
+
+        if is_authenticated:
+            is_participant = user in project.participants.all()
+        else:
+            is_participant = not has_owner
+
+        context['is_participant'] = is_participant
+
         goals_with_milestones = []
-        for goal in self.object.goals.all():
+        for goal in project.goals.all():
             milestones = goal.milestones.filter(parent_milestone__isnull=True).order_by('order')
             goals_with_milestones.append({'goal': goal, 'milestones': milestones})
         context['goals_with_milestones'] = goals_with_milestones
 
-        if self.request.user.is_authenticated:
+        if is_authenticated or not has_owner:
             context['message_form'] = MessageForm()
-            context['messages'] = Message.objects.filter(project=self.object).order_by('-created_at')
-        
+            context['messages'] = Message.objects.filter(project=project).order_by('-created_at')
+        else:
+            context['messages'] = Message.objects.filter(project=project).order_by('-created_at')
+
         total_completed_points = Milestone.objects.filter(
-            goal__project=self.object,
+            goal__project=project,
             child_milestones__isnull=True,
             status='completed'
         ).aggregate(total_points=Sum('points'))['total_points'] or 0
         context['total_completed_points'] = total_completed_points
-        
+
         return context
 
-    @method_decorator(login_required)
     def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        context = self.get_context_data(object=self.object)
-        
+        project = self.get_object()
+        has_owner = project.owner is not None
+
+        if not request.user.is_authenticated and has_owner:
+            return redirect('login')
+
+        context = self.get_context_data(object=project)
+
         message_form = MessageForm(data=request.POST)
         if message_form.is_valid():
             new_message = message_form.save(commit=False)
-            new_message.project = self.object
-            new_message.sender = request.user
+            new_message.project = project
+            if request.user.is_authenticated:
+                new_message.sender = request.user
+            else:
+                new_message.sender = None
             new_message.save()
             context['message_form'] = MessageForm()
         else:
             context['message_form'] = message_form
-        
+
         return self.render_to_response(context)
 
 # プロジェクト作成ビュー（ログイン必要）
-class ProjectCreateView(LoginRequiredMixin, CreateView):
+# views.py
+
+# プロジェクト作成ビュー（ログイン不要）
+class ProjectCreateView(CreateView):
     model = Project
     fields = ['title', 'description']
     template_name = 'project_form.html'
@@ -143,9 +166,11 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
         return {'description': 'プロジェクト憲章\n 社会的背景：\n ・\n\n 根本ニーズ：\n ・\n\n 我々はなぜここにいるのか：\n ・\n\n エレベーターピッチ：\n ・　　たい\n ・　　のための\n ・　　というプロダクトは\n ・　　\n ・これは　　を提供します\n ・　　とは違い\n ・　　する機能が備わっている\n\n'}
 
     def form_valid(self, form):
-        # 現在のユーザーをオーナーとして設定
-        form.instance.owner = self.request.user
-        # フォームの内容を保存して、オブジェクトを作成
+        # ユーザーが認証されている場合のみオーナーを設定
+        if self.request.user.is_authenticated:
+            form.instance.owner = self.request.user
+        else:
+            form.instance.owner = None  # オーナーを未設定（Unknown）にする
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -159,10 +184,22 @@ class CustomLoginView(LoginView):
         return reverse_lazy("project_list")  # 'project_list'はProjectListViewに設定されたURLの名前
 
 # プロジェクト参加ビュー（ログイン必要）
-class ProjectJoinView(LoginRequiredMixin, View):
+# views.py
+
+# プロジェクト参加ビュー（ログイン不要）
+class ProjectJoinView(View):
     def post(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
-        project.participants.add(request.user)
+        if request.user.is_authenticated:
+            project.participants.add(request.user)
+            if project.owner is None and project.participants.count() == 1:
+                project.owner = request.user
+                project.save()
+        else:
+            # 非ログインユーザーの処理（オーナーがいない場合のみ許可）
+            if project.owner is None:
+                # 参加者として匿名ユーザーを追加しない（参加者リストに表示されない）
+                pass
         return redirect('project_detail', pk=pk)
 
 # アカウントビュー（ログイン必要）
@@ -275,7 +312,8 @@ class MilestoneUpdateView(LoginRequiredMixin, UpdateView):
         return response
 
 # マイルストーン開始ビュー（ログイン必要）
-class StartMilestoneView(LoginRequiredMixin, View):
+@method_decorator(login_required, name='dispatch')
+class StartMilestoneView(View):
     def post(self, request, pk):
         milestone = get_object_or_404(Milestone, pk=pk)
         milestone.assigned_to = request.user
@@ -284,17 +322,19 @@ class StartMilestoneView(LoginRequiredMixin, View):
         return redirect('project_detail', pk=milestone.goal.project.id)
 
 # マイルストーン完了ビュー（ログイン必要）
-class CompleteMilestoneView(LoginRequiredMixin, View):
+@method_decorator(login_required, name='dispatch')
+class CompleteMilestoneView(View):
     def post(self, request, pk):
         milestone = get_object_or_404(Milestone, pk=pk)
         project = milestone.goal.project
         if request.user == project.owner:
             milestone.status = 'completed'
             milestone.save()
-        return redirect('project_detail', pk=milestone.goal.project.id)
+        return redirect('project_detail', pk=project.id)
 
 # views.py
-class DenyMilestoneView(LoginRequiredMixin, View):
+@method_decorator(login_required, name='dispatch')
+class DenyMilestoneView(View):
     def post(self, request, pk):
         milestone = get_object_or_404(Milestone, pk=pk)
         if milestone.assigned_to == request.user:
@@ -305,7 +345,8 @@ class DenyMilestoneView(LoginRequiredMixin, View):
 # プロジェクト参加者のビュー（ログイン不要）
 def project_participants(request, pk):
     project = get_object_or_404(Project, id=pk)
-    participants = project.participants.all()
+    # ユーザー名が設定されている参加者のみを取得
+    participants = project.participants.exclude(username__isnull=True).exclude(username='')
 
     # 各参加者の達成マイルストーンポイントを計算
     participants_data = []
@@ -313,7 +354,7 @@ def project_participants(request, pk):
         completed_milestones = Milestone.objects.filter(
             assigned_to=participant, 
             status='completed',
-            goal__project=project  # この行を追加して、マイルストーンがこのプロジェクトに属していることを保証
+            goal__project=project
         )
         total_points = completed_milestones.aggregate(Sum('points'))['points__sum'] or 0
         participants_data.append({
@@ -443,6 +484,8 @@ def add_github_url(request, pk):
     else:
         form = GitHubURLForm(instance=project)
     return render(request, 'add_github_url_form.html', {'form': form, 'project': project})
+
+
 
 
 

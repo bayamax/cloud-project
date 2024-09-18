@@ -1,33 +1,6 @@
 from django.urls import path
 from . import views
-import myapp
-from .views import CustomLoginView
-from .views import SignUpView
-from django.urls import path
 from django.contrib.auth.views import LogoutView
-from .views import ProjectJoinView
-from .views import AccountView
-from django.urls import path
-from .views import GoalCreateView, MilestoneCreateView
-from django.urls import path
-from .views import StartMilestoneView, CompleteMilestoneView
-from .views import project_participants
-from django.urls import path
-from . import views
-from django.urls import path
-from .views import AccountView
-from django.urls import path
-from django.urls import path
-from .views import delete_milestone 
-#from .views import ProjectDescriptionUpdateView
-from django.urls import path
-from .views import project_description_update,project_description_form
-#from .views import update_project_description
-from django.urls import path
-from .views import update_milestone_order
-from django.urls import path
-from .views import ThreadListView, ThreadDetailView
-
 
 urlpatterns = [
     # ユーザー登録
@@ -55,36 +28,32 @@ urlpatterns = [
     path('account/', views.AccountView.as_view(), name='account'),
     path('account/<str:username>/', views.AccountView.as_view(), name='account'),
 
-    # ゴールの作成（プロジェクトIDを指定）
+    # ゴールの作成
     path('projects/<int:pk>/goal/create/', views.GoalCreateView.as_view(), name='goal_create'),
 
-    # マイルストーンの作成（ゴールIDを指定）
+    # マイルストーンの作成
     path('goals/<int:goal_id>/milestone/create/', views.MilestoneCreateView.as_view(), name='milestone_create'),
-
-    # 子マイルストーンの作成（親マイルストーンIDを指定）
     path('milestones/<int:parent_milestone_id>/milestone/create/', views.MilestoneCreateView.as_view(), name='milestone_create_with_parent'),
-    
-    path('milestones/<int:pk>/start/', StartMilestoneView.as_view(), name='start_milestone'),
-    
-    path('milestones/<int:pk>/complete/', CompleteMilestoneView.as_view(), name='complete_milestone'),
-    
-    path('projects/<int:pk>/participants/', project_participants, name='project_participants'),
-    
-    path('milestone/<int:pk>/delete/', delete_milestone, name='delete_milestone'),
-    
-    #path('project/<int:pk>/edit_description/', ProjectDescriptionUpdateView.as_view(), name='edit_project_description'),
-    
-    path('project/<int:pk>/edit_description/', project_description_update, name='edit_project_description'),
-    
-    path('project/<int:pk>/description/', project_description_form, name='project_description_form'),
-    
-    #path('project/<int:pk>/edit_description/', update_project_description, name='edit_project_description'),
-    
-    path('update_milestone_order/', update_milestone_order, name='update_milestone_order'),
-    
+
+    # マイルストーンの操作
+    path('milestones/<int:pk>/start/', views.StartMilestoneView.as_view(), name='start_milestone'),
+    path('milestones/<int:pk>/complete/', views.CompleteMilestoneView.as_view(), name='complete_milestone'),
     path('milestone/deny/<int:pk>/', views.DenyMilestoneView.as_view(), name='deny_milestone'),
-    
+    path('milestone/<int:pk>/delete/', views.delete_milestone, name='delete_milestone'),
+
+    # プロジェクト参加者の表示
+    path('projects/<int:pk>/participants/', views.project_participants, name='project_participants'),
+
+    # プロジェクト憲章の編集
+    path('project/<int:pk>/edit_description/', views.project_description_update, name='edit_project_description'),
+    path('project/<int:pk>/description/', views.project_description_form, name='project_description_form'),
+
+    # マイルストーンの並び替え
+    path('update_milestone_order/', views.update_milestone_order, name='update_milestone_order'),
+
+    # GitHub URLの追加
     path('project/<int:pk>/add_github_url/', views.add_github_url, name='add_github_url'),
-    
-    path('thread/<int:pk>/', ThreadDetailView.as_view(), name='thread_detail'),
+
+    # スレッドの詳細表示
+    path('thread/<int:pk>/', views.ThreadDetailView.as_view(), name='thread_detail'),
 ]

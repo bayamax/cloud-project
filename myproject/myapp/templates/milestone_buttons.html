@@ -1,40 +1,47 @@
 <!-- milestone_buttons.html -->
 
-<div style="display: inline-block;">
+{% if is_participant %}
     <!-- 追加ボタン -->
-    <form action="{% url 'milestone_create_with_parent' milestone.id %}" method="get" style="display: inline;">
+    <form action="{% url 'milestone_create_with_parent' milestone.id %}" method="get" style="display: inline; margin: 0;">
         <input type="submit" value="＋" class="btn btn-success btn-sm">
     </form>
 
     <!-- 削除ボタン -->
-    <form action="{% url 'delete_milestone' milestone.id %}" method="post" style="display: inline;">
+    <form action="{% url 'delete_milestone' milestone.id %}" method="post" style="display: inline; margin: 0;">
         {% csrf_token %}
         <input type="submit" value="−" class="btn btn-danger btn-sm">
     </form>
 
-    <!-- 着手ボタン（まだ着手していない場合のみ表示、子マイルストーンが存在しない場合のみ） -->
-    {% if milestone.status == 'not_started' and not milestone.child_milestones.exists %}
-        <form action="{% url 'start_milestone' milestone.id %}" method="post" style="display: inline;">
+    <!-- 着手ボタン（ユーザーが認証されている場合のみ） -->
+    {% if user.is_authenticated and milestone.status == 'not_started' and not milestone.child_milestones.exists %}
+        <form action="{% url 'start_milestone' milestone.id %}" method="post" style="display: inline; margin: 0;">
             {% csrf_token %}
             <input type="submit" value="✔️" class="btn btn-primary btn-sm">
         </form>
     {% endif %}
+{% endif %}
 
-    <!-- 完了報告ボタン（プロジェクトオーナーのみ表示、かつ進行中のマイルストーンにのみ表示） -->
-    {% if user == project.owner and milestone.status == 'in_progress' %}
-        <form action="{% url 'complete_milestone' milestone.id %}" method="post" style="display: inline;">
-            {% csrf_token %}
-            <input type="submit" value="accept" class="btn btn-info btn-sm">
-        </form>
-        <!-- 否認ボタン -->
-        <form action="{% url 'deny_milestone' milestone.id %}" method="post" style="display: inline;">
-            {% csrf_token %}
-            <input type="submit" value="reject" class="btn btn-danger btn-sm">
-        </form>
-    {% endif %}
+<!-- 完了報告、アクセプト、リジェクトボタン（ログインユーザーのみ） -->
+{% if user.is_authenticated and user == project.owner and milestone.status == 'in_progress' %}
+    <form action="{% url 'complete_milestone' milestone.id %}" method="post" style="display: inline; margin: 0;">
+        {% csrf_token %}
+        <input type="submit" value="accept" class="btn btn-info btn-sm">
+    </form>
+    <!-- 否認ボタン -->
+    <form action="{% url 'deny_milestone' milestone.id %}" method="post" style="display: inline; margin: 0;">
+        {% csrf_token %}
+        <input type="submit" value="reject" class="btn btn-danger btn-sm">
+    </form>
+{% endif %}
 
-    <!-- 完了したマイルストーンのユーザー名表示（一番右に表示） -->
-    {% if milestone.status == 'completed' %}
-        <span style="margin-left: 10px;">完了: {{ milestone.assigned_to.username }}</span>
-    {% endif %}
-</div>
+<!-- 完了したマイルストーンのユーザー名表示 -->
+{% if milestone.status == 'completed' %}
+    <span style="margin-left: 10px;">
+        完了:
+        {% if milestone.assigned_to %}
+            {{ milestone.assigned_to.username }}
+        {% else %}
+            匿名
+        {% endif %}
+    </span>
+{% endif %}
