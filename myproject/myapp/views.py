@@ -1,20 +1,20 @@
-        from django.shortcuts import render, get_object_or_404, redirect
-        from django.urls import reverse_lazy, reverse
-        from django.views import generic, View
-        from django.views.generic import DetailView, ListView, TemplateView
-        from django.views.generic.edit import CreateView, UpdateView
-        from django.contrib.auth.views import LoginView
-        from django.contrib.auth.decorators import login_required
-        from django.contrib.auth.mixins import LoginRequiredMixin
-        from django.utils.decorators import method_decorator
-        from django.contrib.auth import get_user_model
-        from django.db.models import Sum
-        from django.db import transaction
-        from .forms import CustomUserCreationForm, ProjectDescriptionForm, MessageForm, GoalForm, MilestoneForm
-        from .models import Project, Goal, Milestone, Message
-        from decimal import Decimal
+from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse_lazy, reverse
+from django.views import generic, View
+from django.views.generic import DetailView, ListView, TemplateView
+from django.views.generic.edit import CreateView, UpdateView
+from django.contrib.auth.views import LoginView
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.utils.decorators import method_decorator
+from django.contrib.auth import get_user_model
+from django.db.models import Sum
+from django.db import transaction
+from .forms import CustomUserCreationForm, ProjectDescriptionForm, MessageForm, GoalForm, MilestoneForm
+from .models import Project, Goal, Milestone, Message
+from decimal import Decimal
         
-        User = get_user_model()
+User = get_user_model()
         
         # サインアップビュー
         class SignUpView(generic.CreateView):
