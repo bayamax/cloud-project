@@ -334,7 +334,7 @@ from .forms import MilestoneForm
 class MilestoneCreateView(View):
     def get(self, request, *args, **kwargs):
         form = MilestoneForm()
-        return render(request, 'milestone_form.html', {'form': form})
+        return render(request, 'roadmap_form.html', {'form': form})
 
     def post(self, request, *args, **kwargs):
         goal_id = self.kwargs.get('goal_id')
@@ -368,7 +368,7 @@ class MilestoneCreateView(View):
             milestone.save()
             return redirect('project_detail', pk=milestone.goal.project.id)
         else:
-            return render(request, 'milestone_form.html', {'form': form})
+            return render(request, 'roadmap_form.html', {'form': form})
 
 
 # マイルストーン更新ビュー（ログイン必要）
