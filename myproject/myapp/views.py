@@ -294,6 +294,12 @@ class AccountView(LoginRequiredMixin, TemplateView):
         return context
 
 # ゴール作成ビュー（ログイン必要）
+# views.py
+
+from django.views.generic.edit import CreateView
+from django.http import HttpResponseForbidden
+from .models import Goal
+
 class GoalCreateView(CreateView):
     model = Goal
     fields = ['text']
@@ -320,50 +326,50 @@ class GoalCreateView(CreateView):
         return reverse('project_detail', args=[self.project.id])
 
 # マイルストーン作成ビュー（ログイン必要）
-class MilestoneCreateView(LoginRequiredMixin, CreateView):
-    model = Milestone
-    form_class = MilestoneForm
-    template_name = 'roadmap_form.html'
+# views.py
 
-    def form_valid(self, form):
-        goal = None
-        initial_point = Decimal(1)
+from django.views import View
+from .forms import MilestoneForm
 
+class MilestoneCreateView(View):
+    def get(self, request, *args, **kwargs):
+        form = MilestoneForm()
+        return render(request, 'milestone_form.html', {'form': form})
+
+    def post(self, request, *args, **kwargs):
         goal_id = self.kwargs.get('goal_id')
+        parent_milestone_id = self.kwargs.get('parent_milestone_id')
         if goal_id:
             goal = get_object_or_404(Goal, id=goal_id)
-            form.instance.goal = goal
+            project = goal.project
+        elif parent_milestone_id:
+            parent_milestone = get_object_or_404(Milestone, id=parent_milestone_id)
+            goal = parent_milestone.goal
+            project = goal.project
         else:
-            parent_milestone_id = self.kwargs.get('parent_milestone_id')
-            if parent_milestone_id:
-                parent_milestone = get_object_or_404(Milestone, id=parent_milestone_id)
-                form.instance.parent_milestone = parent_milestone
-                form.instance.goal = parent_milestone.goal
-                initial_point = parent_milestone.points
-                goal = parent_milestone.goal
+            return HttpResponseForbidden()
 
-        response = super().form_valid(form)
+        has_owner = project.owner is not None
 
-        if goal:
-            self.update_all_milestone_points(goal)
+        if has_owner and not request.user.is_authenticated:
+            return redirect('login')
 
-        return response
+        if has_owner and request.user not in project.participants.all():
+            return HttpResponseForbidden()
 
-    def update_all_milestone_points(self, goal):
-        all_milestones = Milestone.objects.filter(goal=goal)
-        num_children = all_milestones.filter(parent_milestone__isnull=True).count()
-        points_per_child = Decimal(1) / num_children if num_children else Decimal(1)
-
-        for milestone in all_milestones:
-            if milestone.parent_milestone is None:
-                milestone.points = points_per_child
-            else:
-                num_siblings = milestone.parent_milestone.child_milestones.count()
-                milestone.points = milestone.parent_milestone.points / num_siblings
+        form = MilestoneForm(request.POST)
+        if form.is_valid():
+            milestone = form.save(commit=False)
+            if goal_id:
+                milestone.goal = goal
+            elif parent_milestone_id:
+                milestone.parent_milestone = parent_milestone
+                milestone.goal = goal
             milestone.save()
+            return redirect('project_detail', pk=milestone.goal.project.id)
+        else:
+            return render(request, 'milestone_form.html', {'form': form})
 
-    def get_success_url(self):
-        return reverse('project_detail', kwargs={'pk': self.object.goal.project.id})
 
 # マイルストーン更新ビュー（ログイン必要）
 class MilestoneUpdateView(LoginRequiredMixin, UpdateView):
@@ -431,7 +437,8 @@ def project_participants(request, pk):
     return render(request, 'project_participants.html', context)
 
 # マイルストーン削除ビュー（ログイン必要）
-@login_required
+# views.py
+
 def delete_milestone(request, pk):
     milestone = get_object_or_404(Milestone, pk=pk)
     project = milestone.goal.project
@@ -446,6 +453,7 @@ def delete_milestone(request, pk):
     milestone.delete()
     return redirect('project_detail', pk=project.id)
 
+
 # プロジェクト説明更新ビュー（ログイン必要）
 @login_required
 def project_description_form(request, pk):
@@ -456,17 +464,29 @@ def project_description_form(request, pk):
     form = ProjectDescriptionForm(initial=initial_data)
     return render(request, 'project_description_form.html', {'form': form, 'project': project})
 
-@login_required
+# views.py
+
 def project_description_update(request, pk):
     project = get_object_or_404(Project, pk=pk)
+    has_owner = project.owner is not None
+
+    if has_owner and not request.user.is_authenticated:
+        return redirect('login')
+
+    if has_owner and request.user != project.owner:
+        return HttpResponseForbidden()
 
     if request.method == 'POST':
         form = ProjectDescriptionForm(request.POST, instance=project)
         if form.is_valid():
             form.save()
             return redirect(reverse('project_detail', kwargs={'pk': project.pk}))
+    else:
+        initial_data = {'description': project.description}
+        form = ProjectDescriptionForm(initial=initial_data)
 
-    return project_description_form(request, pk)
+    return render(request, 'project_description_form.html', {'form': form, 'project': project})
+    
 
 # マイルストーンの順序更新ビュー
 def update_milestone_order(request):
