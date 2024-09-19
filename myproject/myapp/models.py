@@ -80,15 +80,23 @@ class Milestone(models.Model):
     def __str__(self):
         return self.text
 
+# models.py
+
 class Message(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='messages')
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages', null=True, blank=True)
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_messages',
+        null=True,  # 追加
+        blank=True  # 追加
+    )
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'Message from {self.sender.username if self.sender else "Anonymous"} on {self.project.title}: {self.text[:50]}'    
-# myapp/models.py
+        sender_username = self.sender.username if self.sender else "Anonymous"
+        return f'Message from {sender_username} on {self.project.title}: {self.text[:50]}'
 # myapp/models.py
 # models.py
 # models.py
