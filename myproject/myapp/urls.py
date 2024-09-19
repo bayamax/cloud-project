@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 from django.contrib.auth.views import LogoutView
+from django.urls import path
+from .views import become_owner
 
 urlpatterns = [
     # ユーザー登録
@@ -56,4 +58,6 @@ urlpatterns = [
 
     # スレッドの詳細表示
     path('thread/<int:pk>/', views.ThreadDetailView.as_view(), name='thread_detail'),
+    
+    path('projects/<int:pk>/become_owner/', become_owner, name='become_owner'),
 ]
