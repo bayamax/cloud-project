@@ -209,7 +209,13 @@
                 <div id="message-list">
                     {% for message in messages %}
                         <div>
-                    <strong>{{ message.sender.username if message.sender else "Anonymous" }}</strong>
+                            <strong>
+                                {% if message.sender %}
+                                    {{ message.sender.username }}
+                                {% else %}
+                                    Anonymous
+                                {% endif %}
+                            </strong>
                             <p>{{ message.text }}</p>
                     <small>{{ message.created_at }}</small>
                         </div>
