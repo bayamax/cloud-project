@@ -88,6 +88,16 @@ class ThreadListView(View):
         return redirect('thread_list')
 
 # プロジェクト詳細ビュー（ログイン不要）
+# views.py
+
+from django.views.generic import DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.utils import timezone
+from django.db.models import Sum
+from django.http import HttpResponseForbidden
+from .models import Project, Message, Goal, Milestone
+from .forms import MessageForm
+
 class ProjectDetailView(DetailView):
     model = Project
     template_name = 'project_detail.html'
@@ -98,13 +108,16 @@ class ProjectDetailView(DetailView):
         return self.render_to_response(context)
 
     def post(self, request, *args, **kwargs):
-        project = self.get_object()
+        self.object = self.get_object()
+        project = self.object
         has_owner = project.owner is not None
 
+        # オーナーがいる場合、匿名ユーザーはメッセージを投稿できない
         if has_owner and not request.user.is_authenticated:
             return redirect('login')
 
         context = self.get_context_data(object=project)
+
         message_form = MessageForm(data=request.POST)
         if message_form.is_valid():
             new_message = message_form.save(commit=False)
@@ -112,7 +125,8 @@ class ProjectDetailView(DetailView):
             if request.user.is_authenticated:
                 new_message.sender = request.user
             else:
-                new_message.sender = None
+                new_message.sender = None  # 匿名ユーザーの場合
+            new_message.created_at = timezone.now()
             new_message.save()
             context['message_form'] = MessageForm()
         else:
@@ -127,14 +141,20 @@ class ProjectDetailView(DetailView):
         is_authenticated = user.is_authenticated
         has_owner = project.owner is not None
 
+        # ユーザーが参加者かどうかの判定
         if has_owner:
             is_participant = is_authenticated and user in project.participants.all()
         else:
-            is_participant = True
+            is_participant = True  # オーナーがいない場合、匿名ユーザーも参加者とみなす
 
         context['is_participant'] = is_participant
         context['project'] = project
+        context['has_owner'] = has_owner
+        context['is_authenticated'] = is_authenticated
+        # オーナーになれるかどうか
+        context['can_become_owner'] = not has_owner and is_authenticated
 
+        # プロジェクトのゴールとマイルストーンを取得
         goals = project.goals.all()
         goals_with_milestones = []
 
@@ -143,11 +163,19 @@ class ProjectDetailView(DetailView):
             goals_with_milestones.append({'goal': goal, 'milestones': milestones})
 
         context['goals_with_milestones'] = goals_with_milestones
+
+        # メッセージフォーム
         context['message_form'] = MessageForm()
+
+        # プロジェクトのメッセージ一覧
         context['messages'] = project.messages.all().order_by('-created_at')
 
+        # 進捗状況の計算
         total_points = Milestone.objects.filter(goal__project=project).aggregate(Sum('points'))['points__sum'] or 0
-        completed_points = Milestone.objects.filter(goal__project=project, status='completed').aggregate(Sum('points'))['points__sum'] or 0
+        completed_points = Milestone.objects.filter(
+            goal__project=project,
+            status='completed'
+        ).aggregate(Sum('points'))['points__sum'] or 0
         context['total_points'] = total_points
         context['completed_points'] = completed_points
         if total_points > 0:
@@ -158,23 +186,58 @@ class ProjectDetailView(DetailView):
         return context
 
 # プロジェクト作成ビュー（ログイン不要）
+# views.py
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse_lazy, reverse
+from django.views import generic, View
+from django.views.generic.edit import CreateView
+from django.contrib.auth import get_user_model
+from .models import Project
+from .forms import ProjectForm  # 必要に応じてフォームをインポート
+
+User = get_user_model()
+
 class ProjectCreateView(CreateView):
     model = Project
     fields = ['title', 'description']
     template_name = 'project_form.html'
 
     def get_initial(self):
-        return {'description': 'プロジェクト憲章\n 社会的背景：\n ・\n\n 根本ニーズ：\n ・\n\n 我々はなぜここにいるのか：\n ・\n\n エレベーターピッチ：\n ・　　たい\n ・　　のための\n ・　　というプロダクトは\n ・　　\n ・これは　　を提供します\n ・　　とは違い\n ・　　する機能が備わっている\n\n'}
+        # 初期値を設定
+        return {
+            'description': (
+                'プロジェクト憲章\n'
+                '社会的背景：\n・\n\n'
+                '根本ニーズ：\n・\n\n'
+                '我々はなぜここにいるのか：\n・\n\n'
+                'エレベーターピッチ：\n'
+                '・　　たい\n'
+                '・　　のための\n'
+                '・　　というプロダクトは\n'
+                '・　　\n'
+                '・これは　　を提供します\n'
+                '・　　とは違い\n'
+                '・　　する機能が備わっている\n\n'
+            )
+        }
 
     def form_valid(self, form):
+        response = super().form_valid(form)
+        # ユーザーが認証されている場合のみオーナーを設定し、参加者に追加
         if self.request.user.is_authenticated:
-            form.instance.owner = self.request.user
+            self.object.owner = self.request.user
+            self.object.participants.add(self.request.user)
+            self.object.save()
         else:
-            form.instance.owner = None
-        return super().form_valid(form)
+            self.object.owner = None  # オーナーを未設定にする
+            self.object.save()
+        return response
 
     def get_success_url(self):
+        # 新しいプロジェクトの詳細ページにリダイレクト
         return reverse('project_detail', args=[self.object.id])
+
 
 # カスタムログインビュー
 class CustomLoginView(LoginView):
@@ -440,3 +503,20 @@ def add_github_url(request, pk):
     else:
         form = GitHubURLForm(instance=project)
     return render(request, 'add_github_url_form.html', {'form': form, 'project': project})
+    
+    # views.py
+
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+
+@require_POST
+@login_required
+def become_owner(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    if project.owner is None:
+        project.owner = request.user
+        project.save()
+        # オーナーになったユーザーを参加者に追加
+        project.participants.add(request.user)
+    return redirect('project_detail', pk=pk)
+    
