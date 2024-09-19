@@ -74,6 +74,12 @@
                 {% if user.is_authenticated %}
                     <div class="mt-2 btn-group">
                         <a href="{% url 'project_participants' project.id %}" class="btn btn-secondary">参加者</a>
+                        {% if can_become_owner %}
+                            <form action="{% url 'become_owner' project.id %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary">オーナーになる</button>
+                            </form>
+                        {% endif %}
                         {% if not is_participant %}
                         <form action="{% url 'project_join' project.id %}" method="post" style="margin: 0;">
                             {% csrf_token %}
