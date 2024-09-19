@@ -208,8 +208,10 @@
                 <h5>メッセージ</h5>
                 <div id="message-list">
                     {% for message in messages %}
-                        <div class="message-item">
-                            <strong><a href="{% url 'account' username=message.sender.username %}">{{ message.sender.username }}</a></strong>: {{ message.text }}
+                        <div>
+                    <strong>{{ message.sender.username if message.sender else "Anonymous" }}</strong>
+                            <p>{{ message.text }}</p>
+                    <small>{{ message.created_at }}</small>
                         </div>
                     {% endfor %}
                 </div>
