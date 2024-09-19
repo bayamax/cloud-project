@@ -98,6 +98,8 @@ from django.http import HttpResponseForbidden
 from .models import Project, Message, Goal, Milestone
 from .forms import MessageForm
 
+# views.py
+
 class ProjectDetailView(DetailView):
     model = Project
     template_name = 'project_detail.html'
@@ -331,10 +333,12 @@ class GoalCreateView(CreateView):
 from django.views import View
 from .forms import MilestoneForm
 
+# views.py
+
 class MilestoneCreateView(View):
     def get(self, request, *args, **kwargs):
         form = MilestoneForm()
-        return render(request, 'roadmap_form.html', {'form': form})
+        return render(request, 'roadmap_form.html', {'form': form})  # テンプレート名を修正
 
     def post(self, request, *args, **kwargs):
         goal_id = self.kwargs.get('goal_id')
@@ -368,8 +372,7 @@ class MilestoneCreateView(View):
             milestone.save()
             return redirect('project_detail', pk=milestone.goal.project.id)
         else:
-            return render(request, 'roadmap_form.html', {'form': form})
-
+            return render(request, 'roadmap_form.html', {'form': form})  # テンプレート名を修正
 
 # マイルストーン更新ビュー（ログイン必要）
 class MilestoneUpdateView(LoginRequiredMixin, UpdateView):
