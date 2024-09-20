@@ -104,88 +104,52 @@ class ProjectDetailView(DetailView):
     model = Project
     template_name = 'project_detail.html'
 
-    def get(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        context = self.get_context_data(object=self.object)
-        return self.render_to_response(context)
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        project = self.object
-        has_owner = project.owner is not None
-
-        # オーナーがいる場合、匿名ユーザーはメッセージを投稿できない
-        if has_owner and not request.user.is_authenticated:
-            return redirect('login')
-
-        context = self.get_context_data(object=project)
-
-        message_form = MessageForm(data=request.POST)
-        if message_form.is_valid():
-            new_message = message_form.save(commit=False)
-            new_message.project = project
-            if request.user.is_authenticated:
-                new_message.sender = request.user
-            else:
-                new_message.sender = None  # 匿名ユーザーの場合
-            new_message.created_at = timezone.now()
-            new_message.save()
-            context['message_form'] = MessageForm()
-        else:
-            context['message_form'] = message_form
-
-        return self.render_to_response(context)
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         project = self.object
         user = self.request.user
-        is_authenticated = user.is_authenticated
-        has_owner = project.owner is not None
-
-        # ユーザーが参加者かどうかの判定
-        if has_owner:
-            is_participant = is_authenticated and user in project.participants.all()
-        else:
-            is_participant = True  # オーナーがいない場合、匿名ユーザーも参加者とみなす
-
-        context['is_participant'] = is_participant
-        context['project'] = project
-        context['has_owner'] = has_owner
-        context['is_authenticated'] = is_authenticated
-        # オーナーになれるかどうか
-        context['can_become_owner'] = not has_owner and is_authenticated
-
-        # プロジェクトのゴールとマイルストーンを取得
-        goals = project.goals.all()
+        context['is_participant'] = user in project.participants.all() if user.is_authenticated else False
+        context['is_owner'] = user == project.owner if user.is_authenticated else False
+        context['can_edit'] = (project.owner is None) or (user == project.owner)
+        
         goals_with_milestones = []
-
-        for goal in goals:
-            milestones = goal.milestones.all().order_by('order')
+        for goal in project.goals.all():
+            milestones = goal.milestones.filter(parent_milestone__isnull=True).order_by('order')
             goals_with_milestones.append({'goal': goal, 'milestones': milestones})
-
         context['goals_with_milestones'] = goals_with_milestones
 
-        # メッセージフォーム
-        context['message_form'] = MessageForm()
-
-        # プロジェクトのメッセージ一覧
-        context['messages'] = project.messages.all().order_by('-created_at')
-
-        # 進捗状況の計算
-        total_points = Milestone.objects.filter(goal__project=project).aggregate(Sum('points'))['points__sum'] or 0
-        completed_points = Milestone.objects.filter(
+        if user.is_authenticated or project.owner is None:
+            context['message_form'] = MessageForm()
+            context['messages'] = Message.objects.filter(project=project).order_by('-created_at')
+        
+        total_completed_points = Milestone.objects.filter(
             goal__project=project,
+            child_milestones__isnull=True,
             status='completed'
-        ).aggregate(Sum('points'))['points__sum'] or 0
-        context['total_points'] = total_points
-        context['completed_points'] = completed_points
-        if total_points > 0:
-            context['progress_percentage'] = int((completed_points / total_points) * 100)
-        else:
-            context['progress_percentage'] = 0
+        ).aggregate(total_points=Sum('points'))['total_points'] or 0
+        context['total_completed_points'] = total_completed_points
 
         return context
+
+    @method_decorator(login_required)
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        project = self.object
+        context = self.get_context_data(object=project)
+        
+        # チャットメッセージの投稿
+        if 'message_form' in context:
+            message_form = MessageForm(data=request.POST)
+            if message_form.is_valid():
+                new_message = message_form.save(commit=False)
+                new_message.project = project
+                new_message.sender = request.user if request.user.is_authenticated else None
+                new_message.save()
+                context['message_form'] = MessageForm()
+            else:
+                context['message_form'] = message_form
+        
+        return self.render_to_response(context)
 
 # プロジェクト作成ビュー（ログイン不要）
 # views.py
@@ -224,20 +188,14 @@ class ProjectCreateView(CreateView):
             )
         }
 
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        # ユーザーが認証されている場合のみオーナーを設定し、参加者に追加
+        def form_valid(self, form):
         if self.request.user.is_authenticated:
-            self.object.owner = self.request.user
-            self.object.participants.add(self.request.user)
-            self.object.save()
+            form.instance.owner = self.request.user
         else:
-            self.object.owner = None  # オーナーを未設定にする
-            self.object.save()
-        return response
-
+            form.instance.owner = None  # オーナーがないプロジェクト
+        return super().form_valid(form)
+    
     def get_success_url(self):
-        # 新しいプロジェクトの詳細ページにリダイレクト
         return reverse('project_detail', args=[self.object.id])
 
 
@@ -302,30 +260,21 @@ from django.views.generic.edit import CreateView
 from django.http import HttpResponseForbidden
 from .models import Goal
 
-class GoalCreateView(CreateView):
-    model = Goal
-    fields = ['text']
-    template_name = 'goal_form.html'
-
-    def dispatch(self, request, *args, **kwargs):
-        project = get_object_or_404(Project, pk=self.kwargs['pk'])
-        has_owner = project.owner is not None
-
-        if has_owner and not request.user.is_authenticated:
-            return redirect('login')
-
-        if has_owner and request.user not in project.participants.all():
-            return HttpResponseForbidden()
-
-        self.project = project
-        return super().dispatch(request, *args, **kwargs)
-
-    def form_valid(self, form):
-        form.instance.project = self.project
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse('project_detail', args=[self.project.id])
+class GoalCreateView(View):
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        
+        # オーナーがいる場合、ログインユーザーのみがゴールを設定可能
+        if project.owner is not None:
+            if not request.user.is_authenticated or request.user != project.owner:
+                return HttpResponseForbidden("このプロジェクトにはゴールを設定できません。")
+        
+        form = GoalForm(request.POST)
+        if form.is_valid():
+            form.instance.project = project
+            form.save()
+            return redirect('project_detail', pk=pk)
+        return render(request, 'goal_form.html', {'form': form, 'project': project})
 
 # マイルストーン作成ビュー（ログイン必要）
 # views.py
@@ -336,43 +285,51 @@ from .forms import MilestoneForm
 # views.py
 
 class MilestoneCreateView(View):
-    def get(self, request, *args, **kwargs):
-        form = MilestoneForm()
-        return render(request, 'roadmap_form.html', {'form': form})  # テンプレート名を修正
-
     def post(self, request, *args, **kwargs):
-        goal_id = self.kwargs.get('goal_id')
-        parent_milestone_id = self.kwargs.get('parent_milestone_id')
+        goal_id = kwargs.get('goal_id')
+        parent_milestone_id = kwargs.get('parent_milestone_id')
+        
         if goal_id:
             goal = get_object_or_404(Goal, id=goal_id)
             project = goal.project
         elif parent_milestone_id:
             parent_milestone = get_object_or_404(Milestone, id=parent_milestone_id)
-            goal = parent_milestone.goal
-            project = goal.project
+            project = parent_milestone.goal.project
         else:
-            return HttpResponseForbidden()
-
-        has_owner = project.owner is not None
-
-        if has_owner and not request.user.is_authenticated:
-            return redirect('login')
-
-        if has_owner and request.user not in project.participants.all():
-            return HttpResponseForbidden()
-
+            return HttpResponseForbidden("無効なリクエストです。")
+        
+        # オーナーがいる場合、ログインユーザーのみがマイルストーンを操作可能
+        if project.owner is not None:
+            if not request.user.is_authenticated or request.user != project.owner:
+                return HttpResponseForbidden("このプロジェクトにはマイルストーンを操作できません。")
+        
         form = MilestoneForm(request.POST)
         if form.is_valid():
-            milestone = form.save(commit=False)
             if goal_id:
-                milestone.goal = goal
-            elif parent_milestone_id:
-                milestone.parent_milestone = parent_milestone
-                milestone.goal = goal
+                form.instance.goal = goal
+            if parent_milestone_id:
+                form.instance.parent_milestone = parent_milestone
+                form.instance.goal = parent_milestone.goal
+            form.save()
+            # ポイント再計算処理は既存のまま
+            MilestoneCreateView.update_all_milestone_points(goal)
+            return redirect('project_detail', pk=project.id)
+        return render(request, 'roadmap_form.html', {'form': form, 'project': project})
+    
+    @staticmethod
+    def update_all_milestone_points(goal):
+        all_milestones = Milestone.objects.filter(goal=goal)
+        num_children = all_milestones.filter(parent_milestone__isnull=True).count()
+        points_per_child = Decimal(1) / num_children if num_children else Decimal(1)
+        
+        for milestone in all_milestones:
+            if milestone.parent_milestone is None:
+                milestone.points = points_per_child
+            else:
+                num_siblings = milestone.parent_milestone.child_milestones.count()
+                milestone.points = milestone.parent_milestone.points / num_siblings if num_siblings else Decimal(0)
             milestone.save()
-            return redirect('project_detail', pk=milestone.goal.project.id)
-        else:
-            return render(request, 'roadmap_form.html', {'form': form})  # テンプレート名を修正
+
 
 # マイルストーン更新ビュー（ログイン必要）
 class MilestoneUpdateView(LoginRequiredMixin, UpdateView):
@@ -539,14 +496,13 @@ def add_github_url(request, pk):
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 
-@require_POST
-@login_required
-def become_owner(request, pk):
-    project = get_object_or_404(Project, pk=pk)
-    if project.owner is None:
+class BecomeOwnerView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        
+        if project.owner is not None:
+            return HttpResponseForbidden("このプロジェクトには既にオーナーが存在します。")
+        
         project.owner = request.user
         project.save()
-        # オーナーになったユーザーを参加者に追加
-        project.participants.add(request.user)
-    return redirect('project_detail', pk=pk)
-    
+        return redirect('project_detail', pk=pk)    
