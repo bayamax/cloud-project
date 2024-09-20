@@ -492,25 +492,32 @@ def project_description_update(request, pk):
     
 
 # マイルストーンの順序更新ビュー
+import json
+from django.http import JsonResponse
 def update_milestone_order(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        project_id = data.get('project_id')
-        project = get_object_or_404(Project, id=project_id)
-        has_owner = project.owner is not None
+        order = data.get('order', [])
+        with transaction.atomic():
+            for item in order:
+                milestone = Milestone.objects.get(id=item['id'])
+                milestone.order = item['order']
+                milestone.parent_milestone_id = item['parent_id'] if item['parent_id'] else None
+                milestone.save()
+            # ポイント再計算処理
+            for item in order:
+                milestone = Milestone.objects.get(id=item['id'])
+                goal_milestones = Milestone.objects.filter(goal=milestone.goal).order_by('order')
+                num_children = goal_milestones.filter(parent_milestone__isnull=True).count()
+                points_per_child = Decimal('1.0') / num_children if num_children else Decimal('1.0')
+                for ms in goal_milestones:
+                    if ms.parent_milestone is None:
+                        ms.points = points_per_child
+                    else:
+                        num_siblings = ms.parent_milestone.child_milestones.count()
+                        ms.points = ms.parent_milestone.points / num_siblings if num_siblings else Decimal('0.0')
+                    ms.save()
 
-        if has_owner and not request.user.is_authenticated:
-            return JsonResponse({'status': 'error', 'message': 'ログインが必要です。'}, status=403)
-
-        if has_owner and request.user != project.owner:
-            return JsonResponse({'status': 'error', 'message': '権限がありません。'}, status=403)
-
-        milestones = data.get('milestones', [])
-        for idx, milestone_data in enumerate(milestones):
-            milestone = Milestone.objects.get(id=milestone_data['id'])
-            milestone.order = idx
-            milestone.parent_milestone = Milestone.objects.get(id=milestone_data['parent_id']) if milestone_data['parent_id'] else None
-            milestone.save()
         return JsonResponse({'status': 'success'})
     else:
         return JsonResponse({'status': 'error', 'message': '無効なリクエストです。'}, status=400)
