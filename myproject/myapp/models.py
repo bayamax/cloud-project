@@ -30,14 +30,14 @@ class Project(models.Model):
     description = models.TextField()
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,  # オーナーが削除された場合はNULLに設定
         null=True,
-        blank=True
+        blank=True,
+        related_name='owned_projects'  # リバース関係を明確にする
     )
     participants = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        related_name='participating_projects',
-        blank=True  # 参加者がいない場合も許容
+        related_name='participating_projects'
     )
     github_url = models.CharField(max_length=200, blank=True, null=True)
 

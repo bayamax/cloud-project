@@ -1,22 +1,20 @@
 <!-- milestone_buttons.html -->
 
-{% if is_participant %}
+{% if project.owner is None or is_participant %}
     <!-- 追加ボタン -->
-    <form action="{% url 'milestone_create_with_parent' milestone.id %}" method="get" style="display: inline; margin: 0;">
-        <input type="submit" value="＋" class="btn btn-success btn-sm">
-    </form>
+    <a href="{% url 'milestone_create_with_parent' parent_milestone_id=milestone.id %}" class="btn btn-success btn-sm">＋</a>
 
     <!-- 削除ボタン -->
-    <form action="{% url 'delete_milestone' milestone.id %}" method="post" style="display: inline; margin: 0;">
+    <form action="{% url 'delete_milestone' pk=milestone.id %}" method="post" style="display: inline; margin: 0;">
         {% csrf_token %}
-        <input type="submit" value="−" class="btn btn-danger btn-sm">
+        <button type="submit" class="btn btn-danger btn-sm">−</button>
     </form>
 
     <!-- 着手ボタン（ユーザーが認証されている場合のみ） -->
     {% if user.is_authenticated and milestone.status == 'not_started' and not milestone.child_milestones.exists %}
-        <form action="{% url 'start_milestone' milestone.id %}" method="post" style="display: inline; margin: 0;">
+        <form action="{% url 'start_milestone' pk=milestone.id %}" method="post" style="display: inline; margin: 0;">
             {% csrf_token %}
-            <input type="submit" value="✔️" class="btn btn-primary btn-sm">
+            <button type="submit" class="btn btn-primary btn-sm">✔️</button>
         </form>
     {% endif %}
 {% endif %}
