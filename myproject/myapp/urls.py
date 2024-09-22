@@ -40,10 +40,10 @@ urlpatterns = [
     path('projects/<int:pk>/goal/create/', GoalCreateView.as_view(), name='goal_create'),
 
     # マイルストーンの作成（ゴールIDを指定）
-    path('goals/<int:goal_id>/milestone/create/', MilestoneCreateView.as_view(), name='milestone_create'),
+    path('goals/<int:goal_id>/milestone/create/', views.MilestoneCreateView.as_view(), name='milestone_create'),
 
     # 子マイルストーンの作成（親マイルストーンIDを指定）
-    path('milestones/<int:parent_milestone_id>/milestone/create/', MilestoneCreateView.as_view(), name='milestone_create_with_parent'),
+    path('milestones/<int:parent_milestone_id>/milestone/create/', views.MilestoneCreateView.as_view(), name='milestone_create_with_parent'),
     
     path('milestones/<int:pk>/start/', StartMilestoneView.as_view(), name='start_milestone'),
     

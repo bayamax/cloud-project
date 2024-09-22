@@ -73,18 +73,20 @@
             <div class="account-info ml-auto">
                 {% if user.is_authenticated %}
                     <div class="mt-2 btn-group">
-                        <a href="{% url 'project_participants' project.id %}" class="btn btn-secondary">参加者</a>
-                        {% if can_become_owner %}
-                            <form action="{% url 'become_owner' project.id %}" method="post">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-primary">オーナーになる</button>
-                            </form>
-                        {% endif %}
                         {% if not is_participant %}
-                        <form action="{% url 'project_join' project.id %}" method="post" style="margin: 0;">
-                            {% csrf_token %}
-                            <input type="submit" value="参加する" class="btn btn-secondary">
-                        </form>
+                            {% if project.owner is None %}
+                                <form action="{% url 'become_owner' project.id %}" method="post">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-primary">オーナーになる</button>
+                                </form>
+                            {% else %}
+                                <form action="{% url 'project_join' project.id %}" method="post" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <input type="submit" value="参加する" class="btn btn-secondary">
+                                </form>
+                            {% endif %}
+                        {% else %}
+                            <a href="{% url 'project_participants' project.id %}" class="btn btn-secondary">参加者</a>
                         {% endif %}
                         <a href="{% url 'project_list' %}" class="btn btn-secondary">メインページ</a>
                     </div>
@@ -130,7 +132,7 @@
             {% endif %}
                 <!-- ロードマップの内容 -->
                 {% if not project.goals.all %}
-                    {% if is_participant %}
+                {% if project.owner is None or user.is_authenticated and user in project.participants.all %}
                         <form action="{% url 'goal_create' project.id %}" method="post">
                             {% csrf_token %}
                             <input type="submit" value="ゴールを作成する" class="btn btn-primary"/>
@@ -140,35 +142,27 @@
 
                 <!-- ゴールとマイルストーンの表示 -->
                 {% for goal_data in goals_with_milestones %}
-                    {% if is_participant %}
-                        <h3 style="display: inline;">{{ goal_data.goal.text }}</h3>
-                        <form action="{% url 'milestone_create' goal_data.goal.id %}" style="display: inline; margin-left: 10px;">
-                            <input type="submit" value="マイルストーンを追加" class="btn btn-primary btn-sm">
-                        </form>
-                    {% else %}
-                        <h3>{{ goal_data.goal.text }}</h3>
+                    <h3 style="display: inline;">{{ goal_data.goal.text }}</h3>
+                    {% if project.owner is None or user.is_authenticated and user in project.participants.all %}
+                        <a href="{% url 'milestone_create' goal_id=goal_data.goal.id %}" class="btn btn-primary btn-sm" style="margin-left: 10px;">マイルストーンを追加</a>
                     {% endif %}
                     <div id="milestones-list-{{ goal_data.goal.id }}">
                         {% for milestone in goal_data.milestones %}
                             {% if not milestone.parent_milestone %}
                                 <div class="milestone" data-id="{{ milestone.id }}" data-parent-id="">
-                                    <div class="milestone-content">
-                                        <div class="milestone-text">
-                                            {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
-                                        </div>
-                                        {% include 'milestone_buttons.html' with milestone=milestone is_participant=is_participant project=project %}
+                                    {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
+                                    {% include 'milestone_buttons.html' with milestone=milestone is_participant=is_participant project=project %}
+                                    <div id="milestones-list-{{ milestone.id }}">
+                                        {% include 'milestone_recursive.html' with milestone=milestone is_participant=is_participant project=project %}
                                     </div>
-                                <div id="milestones-list-{{ milestone.id }}">
-                                    {% include 'milestone_recursive.html' with milestone=milestone is_participant=is_participant project=project %}
                                 </div>
-                            </div>
-                        {% endif %}
-                    {% endfor %}
+                            {% endif %}
+                        {% endfor %}
                     </div>
                 {% endfor %}
                 <br>
                 <!-- マイルストーンがある場合にのみ並び替えボタンを表示 -->
-                {% if is_participant %}
+                {% if project.owner is None or is_participant %}
                     {% if goals_with_milestones %}
                         {% for goal_data in goals_with_milestones %}
                             {% if goal_data.milestones %}
@@ -221,7 +215,7 @@
                     {% endfor %}
                 </div>
                 <br>
-                {% if is_participant %}
+                {% if project.owner is None or is_participant %}
                 <form method="post">
                     {% csrf_token %}
                     {{ message_form.as_p }}
