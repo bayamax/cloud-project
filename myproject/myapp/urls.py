@@ -72,4 +72,9 @@ urlpatterns = [
 
     # オーナーになる機能の追加
     path('projects/<int:pk>/become_owner/', BecomeOwnerView.as_view(), name='become_owner'),
+
+    # マイルストーンの編集
+    path('milestones/<int:pk>/edit/', views.MilestoneUpdateView.as_view(), name='milestone_edit'),
+
+    path('projects/<int:pk>/delete_request/', views.ProjectDeleteRequestView.as_view(), name='project_delete_request'),
 ]

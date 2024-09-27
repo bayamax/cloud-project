@@ -230,37 +230,58 @@ class ProjectJoinView(View):
         return redirect('project_detail', pk=pk)
 
 # アカウントビュー（ログイン必要）
-class AccountView(LoginRequiredMixin, TemplateView):
+class AccountView(LoginRequiredMixin, View):
     template_name = 'account.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        user = self.request.user
+    def get(self, request, username=None):
+        if username:
+            # 他のユーザーのアカウントページ
+            user = get_object_or_404(User, username=username)
+            editable = False
+        else:
+            # 自分のアカウントページ
+            user = request.user
+            editable = True
+
+        form = ProfileForm(instance=user) if editable else None
 
         participating_projects = user.participating_projects.all()
+        total_completed_points = Milestone.objects.filter(
+            assigned_to=user, status='completed'
+        ).aggregate(total_points=Sum('points'))['total_points'] or 0
 
-        projects_data = []
-        for project in participating_projects:
-            completed_points = Milestone.objects.filter(
-                goal__project=project,
-                status='completed',
-                assigned_to=user
-            ).aggregate(Sum('points'))['points__sum'] or 0
+        context = {
+            'user_profile': user,
+            'form': form,
+            'participating_projects': participating_projects,
+            'total_completed_points': total_completed_points,
+            'editable': editable,
+        }
+        return render(request, self.template_name, context)
 
-            projects_data.append({
-                'project': project,
-                'completed_points': completed_points
-            })
+    def post(self, request, username=None):
+        if username and username != request.user.username:
+            return HttpResponseForbidden()
 
-        total_completed_points = sum(data['completed_points'] for data in projects_data)
+        user = request.user
+        form = ProfileForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            return redirect('account')
 
-        context.update({
-            'user': user,
-            'projects_data': projects_data,
-            'total_completed_points': total_completed_points
-        })
+        participating_projects = user.participating_projects.all()
+        total_completed_points = Milestone.objects.filter(
+            assigned_to=user, status='completed'
+        ).aggregate(total_points=Sum('points'))['total_points'] or 0
 
-        return context
+        context = {
+            'user_profile': user,
+            'form': form,
+            'participating_projects': participating_projects,
+            'total_completed_points': total_completed_points,
+            'editable': True,
+        }
+        return render(request, self.template_name, context)
 
 # ゴール作成ビュー（ログイン必要）
 # views.py
@@ -556,4 +577,35 @@ class BecomeOwnerView(LoginRequiredMixin, View):
         
         project.owner = request.user
         project.save()
-        return redirect('project_detail', pk=pk)    
+        return redirect('project_detail', pk=pk)  
+
+
+class MilestoneUpdateView(UpdateView):
+    model = Milestone
+    form_class = MilestoneForm
+    template_name = 'milestone_form.html'
+
+    def get_success_url(self):
+        return reverse('project_detail', kwargs={'pk': self.object.goal.project.pk})
+
+    def dispatch(self, request, *args, **kwargs):
+        milestone = self.get_object()
+        project = milestone.goal.project
+
+        if project.owner is None or (request.user.is_authenticated and request.user in project.participants.all()):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return redirect('project_detail', pk=project.pk)
+
+class ProjectDeleteRequestView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        if request.user in project.participants.all():
+            ProjectDeleteRequest.objects.get_or_create(project=project, user=request.user)
+            # 全員がリクエストしたかチェック
+            total_participants = project.participants.count()
+            total_requests = ProjectDeleteRequest.objects.filter(project=project).count()
+            if total_participants == total_requests:
+                project.delete()
+                return redirect('project_list')
+        return redirect('project_detail', pk=pk)

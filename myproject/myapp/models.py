@@ -7,8 +7,9 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 class CustomUser(AbstractUser):
-    bio = models.TextField(max_length=500, blank=True)
+    bio = models.TextField('自己紹介', blank=True)
     github_username = models.CharField(max_length=255, blank=True, null=True)
+    participating_projects = models.ManyToManyField('Project', related_name='participants', blank=True)
 
     class Meta:
         verbose_name = 'Custom User'
@@ -118,3 +119,11 @@ class ThreadMessage(models.Model):
 
     def __str__(self):
         return f'Message in {self.thread.title} from {self.sender.username if self.sender else "unknown"}: {self.text[:50]}'
+
+class ProjectDeleteRequest(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    requested_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('project', 'user')

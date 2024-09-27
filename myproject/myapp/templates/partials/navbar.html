@@ -1,0 +1,22 @@
+<nav class="navbar navbar-expand-md navbar-dark">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'project_list' %}">cloud project</a>
+        {% block navbar_content %}
+        <!-- ここにページ固有のナビゲーション要素を挿入 -->
+        {% endblock %}
+        <div class="account-info ml-auto">
+            {% if user.is_authenticated %}
+                <p class="mb-0 text-white">こんにちは, {{ user.username }}!</p>
+                <div class="mt-2">
+                    <a href="{% url 'logout' %}" class="btn btn-secondary">ログアウト</a>
+                    <a href="{% url 'account' %}" class="btn btn-secondary ml-2">アカウント</a>
+                </div>
+            {% else %}
+                <div class="mt-2 btn-group">
+                    <a href="{% url 'login' %}" class="btn btn-primary">ログイン</a>
+                    <a href="{% url 'signup' %}" class="btn btn-secondary">サインアップ</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</nav>

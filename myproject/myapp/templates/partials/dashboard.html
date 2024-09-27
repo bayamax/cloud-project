@@ -1,0 +1,48 @@
+<br>
+<!-- プロジェクトの進捗 -->
+<h5>プロジェクトの進捗</h5>
+<canvas id="progressChart" width="300" height="300"></canvas>
+<br><br>
+<!-- GitHub リンク -->
+{% if project.github_url %}
+    <p>GitHub リポジトリ: <a href="{{ project.github_url }}" target="_blank">{{ project.github_url }}</a></p>
+{% else %}
+    <p>GitHub リポジトリ: まだ設定されていません</p>
+    {% if is_participant %}
+        <a href="{% url 'add_github_url' project.id %}" class="btn btn-primary">GitHub URLを追加</a>
+    {% endif %}
+{% endif %}
+<br><br>
+<!-- チャット機能 -->
+<h5>メッセージ</h5>
+<div id="message-list">
+    {% for message in messages %}
+        <div>
+            <strong>
+                {% if message.sender %}
+                    {{ message.sender.username }}
+                {% else %}
+                    Anonymous
+                {% endif %}
+            </strong>
+            <p>{{ message.text }}</p><small>{{ message.created_at }}</small>
+        </div>
+    {% endfor %}
+</div>
+<br>
+{% if project.owner is None or is_participant %}
+    <form method="post">
+        {% csrf_token %}
+        {{ message_form.as_p }}
+        <button type="submit" class="btn btn-primary">送信</button>
+    </form>
+{% endif %}
+<br><br>
+<!-- プロジェクト削除ボタン -->
+{% if is_participant %}
+    <form action="{% url 'project_delete_request' pk=project.pk %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">プロジェクトを削除リクエスト</button>
+    </form>
+    <p>参加者全員が削除リクエストを行うと、プロジェクトが削除されます。</p>
+{% endif %}

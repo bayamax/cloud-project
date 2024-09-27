@@ -87,4 +87,8 @@ class ThreadMessageForm(forms.ModelForm):
     class Meta:
         model = ThreadMessage
         fields = ['text']
- 
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = ['bio']

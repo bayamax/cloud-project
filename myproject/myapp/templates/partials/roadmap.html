@@ -1,0 +1,35 @@
+{% if not project.goals.all %}
+    {% if project.owner is None or user.is_authenticated and user in project.participants.all %}
+        <form action="{% url 'goal_create' project.id %}" method="post">
+            {% csrf_token %}
+            <input type="submit" value="ゴールを作成する" class="btn btn-primary"/>
+        </form>
+    {% endif %}
+{% endif %}
+
+<!-- ゴールとマイルストーンの表示 -->
+{% for goal_data in goals_with_milestones %}
+    <h3 style="display: inline;">{{ goal_data.goal.text }}</h3>
+    {% if project.owner is None or user.is_authenticated and user in project.participants.all %}
+        <a href="{% url 'milestone_create' goal_id=goal_data.goal.id %}" class="btn btn-primary btn-sm" style="margin-left: 10px;">マイルストーンを追加</a>
+    {% endif %}
+    <div id="milestones-list-{{ goal_data.goal.id }}">
+        {% for milestone in goal_data.milestones %}
+            {% if not milestone.parent_milestone %}
+                {% include 'partials/milestone.html' with milestone=milestone parent_id="" %}
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endfor %}
+<br>
+<!-- マイルストーンがある場合にのみ並び替えボタンを表示 -->
+{% if project.owner is None or is_participant %}
+    {% if goals_with_milestones %}
+        {% for goal_data in goals_with_milestones %}
+            {% if goal_data.milestones %}
+                <button id="edit-roadmap-btn" class="btn btn-primary">マイルストーンを並び替え</button>
+                <button id="save-roadmap-btn" class="btn btn-success" style="display:none;">並び替えを終了</button>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+{% endif %}

@@ -1,0 +1,11 @@
+<div class="milestone" data-id="{{ milestone.id }}" data-parent-id="{{ parent_id }}"></div>
+    <div class="milestone-content">
+        <span>{{ milestone.text }} - Points: {{ milestone.points|floatformat:2 }}</span>
+        {% include 'partials/milestone_buttons.html' with milestone=milestone %}
+    </div>
+    <div id="milestones-list-{{ milestone.id }}">
+        {% for child in milestone.child_milestones.all|dictsort:"order" %}
+            {% include 'partials/milestone.html' with milestone=child parent_id=milestone.id %}
+        {% endfor %}
+    </div>
+</div>

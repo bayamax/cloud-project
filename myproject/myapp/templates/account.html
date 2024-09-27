@@ -1,75 +1,24 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ user.username }}のアカウントページ</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        .navbar {
-            /*background-color: #007bff;  ヘッダーの背景色 */
-           background-image: linear-gradient(90deg, rgba(40, 0, 255, 1), rgba(255, 160, 71, 1));
-        }
-        .container {
-            max-width: 960px;
-            margin-top: 20px;
-            margin-bottom: 20px;
-        }
-        .header-title {
-            text-align: center;
-            margin-top: 20px;
-            color: white; /* タイトルの色を調整 */
-        }
-        .btn-primary, .btn-secondary {
-            margin-top: 10px;
-            margin-bottom: 10px;
-        }
-        .btn-primary:hover {
-            background-color: #0056b3;
-        }
-        .list-group-item a {
-            color: #007bff; /* リンク色をBootstrapのプライマリーカラーに合わせる */
-            text-decoration: none; /* アンダーラインを削除 */
-        }
-        .list-group-item a:hover {
-            text-decoration: underline; /* ホバー時にアンダーラインを表示 */
-        }
-    </style>
-</head>
-<body>
-    {% load static %}
-    <nav class="navbar navbar-expand-md navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'project_list' %}">{{ user.username }}のアカウント</a>
-            <div class="account-info">
-                {% if user.is_authenticated %}
-                    <div class="mt-2">
-                        <a href="{% url 'project_list' %}" class="btn btn-secondary">メインページ</a>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
+{% extends 'base.html' %}
 
-    <div class="container">
-        <p>合計達成ポイント: {{ total_completed_points }}</p>
+{% block title %}アカウント{% endblock %}
 
-        <h3>参加中のプロジェクト</h3>
-        <ul class="list-group">
-            {% for project_data in projects_data %}
-                <li class="list-group-item">
-                    <a href="{% url 'project_detail' project_data.project.id %}">{{ project_data.project.title }}</a>
-                    - 達成ポイント: {{ project_data.completed_points }}
-                </li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.9.9/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</body>
-</html>
+{% block content %}
+    <h2>{{ user_profile.username }}さんのアカウント</h2>
+    <p>合計達成ポイント: {{ total_completed_points|floatformat:2 }}</p>
+    <h3>自己紹介</h3>
+    {% if editable %}
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">保存</button>
+        </form>
+    {% else %}
+        <p>{{ user_profile.bio|linebreaksbr }}</p>
+    {% endif %}
+    <h3>参加中のプロジェクト</h3>
+    <ul>
+        {% for project in participating_projects %}
+            <li><a href="{% url 'project_detail' pk=project.pk %}">{{ project.title }}</a></li>
+        {% endfor %}
+    </ul>
+{% endblock %}

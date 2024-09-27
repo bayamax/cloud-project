@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}マイルストーンの編集{% endblock %}
+
+{% block content %}
+    <h2>マイルストーンの編集</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">保存</button>
+    </form>
+{% endblock %}

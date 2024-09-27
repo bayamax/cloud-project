@@ -1,249 +1,116 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ project.title }}</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+{% extends 'base.html' %}
+
+{% block title %}{{ project.title }}{% endblock %}
+
+{% block extra_head %}
+    <!-- 追加のスタイルやスクリプト -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        .navbar {
-            background-image: linear-gradient(90deg, rgba(40, 0, 255, 1), rgba(255, 160, 71, 1));
-        }
-        .container {
-            max-width: 960px;
-            margin-top: 20px;
-        }
-        .btn-primary, .btn-secondary {
-            margin-top: 10px;
-        }
-        .btn-group {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        #message-list {
-            height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 10px;
-            background-color: #f9f9f9;
-        }
-        .message-item {
-            padding: 5px;
-            border-bottom: 1px solid #ddd;
-        }
-        .message-item:last-child {
-            border-bottom: none;
-        }
-        .milestone {
-            padding: 5px;
-            margin: 5px 0;
-        }
-
-        .milestone-content {
-            display: flex;
-            align-items: center;
-        }
-
-        .milestone-text {
-            margin-right: 10px;
-        }
-
-        .milestone-buttons {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .milestone .milestone {
-            margin-left: 20px;
-        }
-    </style>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-</head>
-<body>
-    {% load static %}
-    <nav class="navbar navbar-expand-md navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'project_list' %}">{{ project.title }}</a>
-            <div class="account-info ml-auto">
-                {% if user.is_authenticated %}
-                    <div class="mt-2 btn-group">
-                        {% if not is_participant %}
-                            {% if project.owner is None %}
-                                <form action="{% url 'become_owner' project.id %}" method="post">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-primary">オーナーになる</button>
-                                </form>
-                            {% else %}
-                                <form action="{% url 'project_join' project.id %}" method="post" style="margin: 0;">
-                                    {% csrf_token %}
-                                    <input type="submit" value="参加する" class="btn btn-secondary">
-                                </form>
-                            {% endif %}
-                        {% else %}
-                            <a href="{% url 'project_participants' project.id %}" class="btn btn-secondary">参加者</a>
-                        {% endif %}
-                        <a href="{% url 'project_list' %}" class="btn btn-secondary">メインページ</a>
-                    </div>
-                {% else %}
-                    <div class="mt-2 btn-group">
-                        <a href="{% url 'login' %}" class="btn btn-primary">ログイン</a>
-                        <a href="{% url 'signup' %}" class="btn btn-secondary">サインアップ</a>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
+    <link rel="stylesheet" href="{% static 'css/project_detail.css' %}">
+{% endblock %}
 
-    <div class="container">
-        <!-- タブメニュー -->
-        <ul class="nav nav-tabs" id="projectTabs" role="tablist">
-            {% if goals_with_milestones %}
-                <li class="nav-item">
-                    <a class="nav-link active" id="roadmap-tab" data-toggle="tab" href="#roadmap" role="tab" aria-controls="roadmap" aria-selected="true">ロードマップ</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="false">ダッシュボード</a>
-                </li>
-            {% else %}
-                <li class="nav-item">
-                    <a class="nav-link" id="roadmap-tab" data-toggle="tab" href="#roadmap" role="tab" aria-controls="roadmap" aria-selected="false">ロードマップ</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">ダッシュボード</a>
-                </li>
-            {% endif %}
-            <li class="nav-item">
-                <a class="nav-link" id="charter-tab" data-toggle="tab" href="#charter" role="tab" aria-controls="charter" aria-selected="false">プロジェクト憲章</a>
-            </li>
-        </ul>
-
-        <div class="tab-content" id="projectTabsContent">
-            <!-- ロードマップタブ -->
-            {% if goals_with_milestones %}
-                <div class="tab-pane fade show active" id="roadmap" role="tabpanel" aria-labelledby="roadmap-tab">
-            {% else %}
-                <div class="tab-pane fade" id="roadmap" role="tabpanel" aria-labelledby="roadmap-tab">
-            {% endif %}
-                <!-- ロードマップの内容 -->
-                {% if not project.goals.all %}
-                {% if project.owner is None or user.is_authenticated and user in project.participants.all %}
-                        <form action="{% url 'goal_create' project.id %}" method="post">
+{% block navbar_content %}
+    <!-- プロジェクト詳細ページ固有のナビゲーション要素 -->
+    <a class="navbar-brand" href="{% url 'project_list' %}">{{ project.title }}</a>
+    <div class="account-info ml-auto">
+        {% if user.is_authenticated %}
+            <div class="mt-2 btn-group">
+                {% if not is_participant %}
+                    {% if project.owner is None %}
+                        <form action="{% url 'become_owner' project.id %}" method="post">
                             {% csrf_token %}
-                            <input type="submit" value="ゴールを作成する" class="btn btn-primary"/>
+                            <button type="submit" class="btn btn-primary">オーナーになる</button>
+                        </form>
+                    {% else %}
+                        <form action="{% url 'project_join' project.id %}" method="post" style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="submit" value="参加する" class="btn btn-secondary">
                         </form>
                     {% endif %}
-                {% endif %}
-
-                <!-- ゴールとマイルストーンの表示 -->
-                {% for goal_data in goals_with_milestones %}
-                    <h3 style="display: inline;">{{ goal_data.goal.text }}</h3>
-                    {% if project.owner is None or user.is_authenticated and user in project.participants.all %}
-                        <a href="{% url 'milestone_create' goal_id=goal_data.goal.id %}" class="btn btn-primary btn-sm" style="margin-left: 10px;">マイルストーンを追加</a>
-                    {% endif %}
-                    <div id="milestones-list-{{ goal_data.goal.id }}">
-                        {% for milestone in goal_data.milestones %}
-                            {% if not milestone.parent_milestone %}
-                                <div class="milestone" data-id="{{ milestone.id }}" data-parent-id="">
-                                    {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
-                                    {% include 'milestone_buttons.html' with milestone=milestone is_participant=is_participant project=project %}
-                                    <div id="milestones-list-{{ milestone.id }}">
-                                        {% include 'milestone_recursive.html' with milestone=milestone is_participant=is_participant project=project %}
-                                    </div>
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                {% endfor %}
-                <br>
-                <!-- マイルストーンがある場合にのみ並び替えボタンを表示 -->
-                {% if project.owner is None or is_participant %}
-                    {% if goals_with_milestones %}
-                        {% for goal_data in goals_with_milestones %}
-                            {% if goal_data.milestones %}
-                                <button id="edit-roadmap-btn" class="btn btn-primary">マイルストーンを並び替え</button>
-                                <button id="save-roadmap-btn" class="btn btn-success" style="display:none;">並び替えを終了</button>
-                            {% endif %}
-                        {% endfor %}
-                    {% endif %}
-                {% endif %}
-                <br>
-                <br>
-            </div>
-
-            <!-- ダッシュボードタブ -->
-            {% if not goals_with_milestones %}
-                <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
-            {% else %}
-                <div class="tab-pane fade" id="overview" role="tabpanel" aria-labelledby="overview-tab">
-            {% endif %}
-                <br>
-                <!-- githubのリンク -->
-                <h5>プロジェクトの進捗</h5>
-                <canvas id="progressChart" width="300" height="300"></canvas>
-                <br>
-                <br>
-                {% if project.github_url %}
-                <p>GitHubリポジトリ: <a href="{{ project.github_url }}" target="_blank">{{ project.github_url }}</a></p>
                 {% else %}
-                <p>GitHubリポジトリ: まだ設定されていません</p>
-                {% if is_participant %}
-                    <a href="{% url 'add_github_url' project.id %}" class="btn btn-primary">GitHub URLを追加</a>
+                    <a href="{% url 'project_participants' project.id %}" class="btn btn-secondary">参加者</a>
                 {% endif %}
-                {% endif %}
-                <br>
-                <br>
-                <!-- チャット機能のセクション -->
-                <h5>メッセージ</h5>
-                <div id="message-list">
-                    {% for message in messages %}
-                        <div>
-                            <strong>
-                                {% if message.sender %}
-                                    {{ message.sender.username }}
-                                {% else %}
-                                    Anonymous
-                                {% endif %}
-                            </strong>
-                            <p>{{ message.text }}</p><small>{{ message.created_at }}</small>
-                        </div>
-                    {% endfor %}
-                </div>
-                <br>
-                {% if project.owner is None or is_participant %}
-                <form method="post">
-                    {% csrf_token %}
-                    {{ message_form.as_p }}
-                    <button type="submit" class="btn btn-primary">送信</button>
-                </form>
-                {% endif %}
-                <br>
-                <br>
+                <a href="{% url 'project_list' %}" class="btn btn-secondary">メインページ</a>
             </div>
+        {% else %}
+            <div class="mt-2 btn-group">
+                <a href="{% url 'login' %}" class="btn btn-primary">ログイン</a>
+                <a href="{% url 'signup' %}" class="btn btn-secondary">サインアップ</a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
 
-            <!-- プロジェクト憲章タブ -->
-            <div class="tab-pane fade" id="charter" role="tabpanel" aria-labelledby="charter-tab">
-                <br>
-                <p>{{ project.description|linebreaksbr }}</p>
-                {% if is_participant %}
-                    <form action="{% url 'edit_project_description' project.id %}" method="post">
-                        {% csrf_token %}
-                        <input type="submit" value="プロジェクト憲章を編集する" class="btn btn-primary"/>
-                    </form>
-                {% endif %}
-            </div>
+{% block content %}
+    <!-- タブメニュー -->
+    <ul class="nav nav-tabs" id="projectTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link" id="roadmap-tab" data-toggle="tab" href="#roadmap" role="tab" aria-controls="roadmap" aria-selected="false">ロードマップ</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="false">ダッシュボード</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="charter-tab" data-toggle="tab" href="#charter" role="tab" aria-controls="charter" aria-selected="false">プロジェクト憲章</a>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="projectTabsContent">
+        <!-- ロードマップタブ -->
+        <div class="tab-pane fade" id="roadmap" role="tabpanel" aria-labelledby="roadmap-tab">
+            <!-- ロードマップの内容 -->
+            {% include 'partials/roadmap.html' %}
+        </div>
+
+        <!-- ダッシュボードタブ -->
+        <div class="tab-pane fade" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            <!-- ダッシュボードの内容 -->
+            {% include 'partials/dashboard.html' %}
+        </div>
+
+        <!-- プロジェクト憲章タブ -->
+        <div class="tab-pane fade" id="charter" role="tabpanel" aria-labelledby="charter-tab">
+            <!-- プロジェクト憲章の内容 -->
+            <br>
+            <p>{{ project.description|linebreaksbr }}</p>
+            {% if is_participant %}
+                <form action="{% url 'edit_project_description' project.id %}" method="post">
+                    {% csrf_token %}
+                    <input type="submit" value="プロジェクト憲章を編集する" class="btn btn-primary"/>
+                </form>
+            {% endif %}
         </div>
     </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <!-- タブの状態を保持するスクリプト -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // タブの状態を保持
+            const tabs = document.querySelectorAll('a[data-toggle="tab"]');
+            tabs.forEach(tab => {
+                tab.addEventListener('shown.bs.tab', function (e) {
+                    localStorage.setItem('activeTab', e.target.getAttribute('href'));
+                });
+            });
+            const activeTab = localStorage.getItem('activeTab');
+            if (activeTab) {
+                const triggerTab = document.querySelector('a[href="' + activeTab + '"]');
+                if (triggerTab) {
+                    $(triggerTab).tab('show');
+                }
+            } else {
+                // デフォルトで最初のタブを表示
+                $('#projectTabs a:first').tab('show');
+            }
+        });
+    </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const editButton = document.getElementById('edit-roadmap-btn');
-            const             saveButton = document.getElementById('save-roadmap-btn');
+            const saveButton = document.getElementById('save-roadmap-btn');
 
             function updateOrderAndParentId() {
                 let order = [];
@@ -292,9 +159,11 @@
                     updateOrderAndParentId();
                 });
             }
-        });
+        });    
 
-        document.addEventListener('DOMContentLoaded', function () {
+
+    // プロジェクトの進捗チャート
+    document.addEventListener('DOMContentLoaded', function () {
             const ctx = document.getElementById('progressChart').getContext('2d');
             const totalCompletedPoints = {{ total_completed_points }};
             const progressData = {
@@ -322,14 +191,10 @@
                             }
                         }
                     }
-                }
+                };
             };
 
             new Chart(ctx, config);
         });
     </script>
-
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-</body>
-</html> 
+{% endblock %}
