@@ -5,11 +5,13 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db import models
+from django.contrib.auth.models import AbstractUser
 
 class CustomUser(AbstractUser):
     bio = models.TextField('自己紹介', blank=True)
     github_username = models.CharField(max_length=255, blank=True, null=True)
-    participating_projects = models.ManyToManyField('Project', related_name='participants', blank=True)
+    # ここで participating_projects フィールドを削除
 
     class Meta:
         verbose_name = 'Custom User'
@@ -38,7 +40,8 @@ class Project(models.Model):
     )
     participants = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        related_name='participating_projects'
+        related_name='participating_projects',
+        blank=True
     )
     github_url = models.CharField(max_length=200, blank=True, null=True)
 

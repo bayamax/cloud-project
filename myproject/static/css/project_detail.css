@@ -1,0 +1,60 @@
+/* project_detail.css */
+
+/* マイルストーンのスタイル */
+.milestone {
+    border-left: 1px solid #ccc;
+    margin-left: 20px;
+    padding-left: 10px;
+}
+
+.milestone-content {
+    position: relative;
+    padding: 5px;
+    background-color: #f9f9f9;
+    margin-bottom: 5px;
+    border-radius: 5px;
+}
+
+.milestone-buttons {
+    position: absolute;
+    right: 10px;
+    top: 5px;
+}
+
+.milestone-buttons .btn {
+    margin-left: 5px;
+}
+
+/* タブのコンテンツ間の余白 */
+.tab-content > .tab-pane {
+    padding-top: 20px;
+}
+
+/* チャートの中央揃え */
+#progressChart {
+    display: block;
+    margin: 0 auto;
+}
+
+/* メッセージリストのスタイル */
+#message-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+#message-list div {
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+/* ロードマップの並び替え時のスタイル */
+.sortable-chosen {
+    background-color: #d9edf7;
+}
+
+.sortable-drag {
+    opacity: 0.5;
+}

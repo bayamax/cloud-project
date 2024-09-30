@@ -10,6 +10,9 @@
         <button type="submit" class="btn btn-danger btn-sm">−</button>
     </form>
 
+    <!-- 編集ボタン -->
+    <a href="{% url 'milestone_edit' pk=milestone.id %}" class="btn btn-warning btn-sm">📝</a>
+
     <!-- 着手ボタン（ユーザーが認証されている場合のみ） -->
     {% if user.is_authenticated and milestone.status == 'not_started' and not milestone.child_milestones.exists %}
         <form action="{% url 'start_milestone' pk=milestone.id %}" method="post" style="display: inline; margin: 0;">

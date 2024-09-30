@@ -31,11 +31,8 @@
 </div>
 <br>
 {% if project.owner is None or is_participant %}
-    <form method="post">
-        {% csrf_token %}
-        {{ message_form.as_p }}
-        <button type="submit" class="btn btn-primary">送信</button>
-    </form>
+    <input type="text" id="chat-message-input" autocomplete="off" placeholder="メッセージを入力"/>
+    <button id="chat-message-submit" class="btn btn-primary">送信</button>
 {% endif %}
 <br><br>
 <!-- プロジェクト削除ボタン -->

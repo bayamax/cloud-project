@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ project.title }}{% endblock %}
 
@@ -85,16 +86,74 @@
 
 {% block extra_scripts %}
     <!-- タブの状態を保持するスクリプト -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ project.title }}{% endblock %}
+
+{% block extra_head %}
+    <!-- 追加のスタイルやスクリプト -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <link rel="stylesheet" href="{% static 'css/project_detail.css' %}">
+{% endblock %}
+
+{% block navbar_content %}
+    <!-- プロジェクト詳細ページ固有のナビゲーション要素 -->
+    <!-- （省略、前回と同じです） -->
+{% endblock %}
+
+{% block content %}
+    <!-- タブメニュー -->
+    <ul class="nav nav-tabs" id="projectTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link" id="roadmap-tab" data-toggle="tab" href="#roadmap" role="tab" aria-controls="roadmap" aria-selected="false">ロードマップ</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="false">ダッシュボード</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="charter-tab" data-toggle="tab" href="#charter" role="tab" aria-controls="charter" aria-selected="false">プロジェクト憲章</a>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="projectTabsContent">
+        <!-- ロードマップタブ -->
+        <div class="tab-pane fade" id="roadmap" role="tabpanel" aria-labelledby="roadmap-tab">
+            {% include 'partials/roadmap.html' %}
+        </div>
+
+        <!-- ダッシュボードタブ -->
+        <div class="tab-pane fade" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            {% include 'partials/dashboard.html' %}
+        </div>
+
+        <!-- プロジェクト憲章タブ -->
+        <div class="tab-pane fade" id="charter" role="tabpanel" aria-labelledby="charter-tab">
+            <br>
+            <p>{{ project.description|linebreaksbr }}</p>
+            {% if is_participant %}
+                <form action="{% url 'edit_project_description' project.id %}" method="post">
+                    {% csrf_token %}
+                    <input type="submit" value="プロジェクト憲章を編集する" class="btn btn-primary"/>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <!-- タブの状態を保持するスクリプト -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // タブの状態を保持
             const tabs = document.querySelectorAll('a[data-toggle="tab"]');
             tabs.forEach(tab => {
                 tab.addEventListener('shown.bs.tab', function (e) {
-                    localStorage.setItem('activeTab', e.target.getAttribute('href'));
+                    localStorage.setItem('activeTab_{{ project.id }}', e.target.getAttribute('href'));
                 });
             });
-            const activeTab = localStorage.getItem('activeTab');
+            const activeTab = localStorage.getItem('activeTab_{{ project.id }}');
             if (activeTab) {
                 const triggerTab = document.querySelector('a[href="' + activeTab + '"]');
                 if (triggerTab) {
@@ -105,9 +164,7 @@
                 $('#projectTabs a:first').tab('show');
             }
         });
-    </script>
 
-    <script>
         document.addEventListener('DOMContentLoaded', function() {
             const editButton = document.getElementById('edit-roadmap-btn');
             const saveButton = document.getElementById('save-roadmap-btn');
@@ -196,5 +253,35 @@
 
             new Chart(ctx, config);
         });
+    </script>
+
+    <script>
+        const projectId = {{ project.id }};
+        const userName = "{{ request.user.username|escapejs }}";
+        const chatSocket = new WebSocket(
+            'ws://' + window.location.host +
+            '/ws/projects/' + projectId + '/'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            const messageList = document.getElementById('message-list');
+            const messageDiv = document.createElement('div');
+            messageDiv.innerHTML = '<strong>' + data.sender + ':</strong> ' + data.message;
+            messageList.appendChild(messageDiv);
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        document.getElementById('chat-message-submit').onclick = function(e) {
+            const inputField = document.getElementById('chat-message-input');
+            const message = inputField.value;
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            inputField.value = '';
+        };
     </script>
 {% endblock %}

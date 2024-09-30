@@ -110,8 +110,8 @@ class ProjectDetailView(DetailView):
         project = self.object
         user = self.request.user
 
-        context['is_participant'] = user in project.participants.all() if user.is_authenticated else False
-        context['is_owner'] = project.owner == user if user.is_authenticated else False
+        context['is_participant'] = user.is_authenticated and user in project.participants.all()
+        context['is_owner'] = user.is_authenticated and project.owner == user
         context['project_owner'] = project.owner.username if project.owner else 'unknown'
 
         # マイルストーンのポイント再計算
@@ -368,16 +368,6 @@ class MilestoneCreateView(CreateView):
     def get_success_url(self):
         return reverse('project_detail', kwargs={'pk': self.project.pk})
 
-
-# マイルストーン更新ビュー（ログイン必要）
-class MilestoneUpdateView(LoginRequiredMixin, UpdateView):
-    model = Milestone
-    fields = ['goal', 'parent_milestone', 'text', 'assigned_to', 'status']
-
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        self.object.recalculate_points()
-        return response
 
 # マイルストーン開始ビュー（ログイン必要）
 class StartMilestoneView(View):
