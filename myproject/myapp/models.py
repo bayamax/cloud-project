@@ -9,6 +9,7 @@ from django.db import models
 class CustomUser(AbstractUser):
     bio = models.TextField(max_length=500, blank=True)
     github_username = models.CharField(max_length=255, blank=True, null=True)
+    paypay_id = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
         verbose_name = 'Custom User'
@@ -40,6 +41,7 @@ class Project(models.Model):
         related_name='participating_projects'
     )
     github_url = models.CharField(max_length=200, blank=True, null=True)
+    total_investment = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 総投資額を追加
 
     def __str__(self):
         return self.title
@@ -79,7 +81,11 @@ class Milestone(models.Model):
 
     def __str__(self):
         return self.text
-
+    
+    @property
+    def reference_reward(self):
+        project = self.goal.project
+        return project.total_investment * self.points
 # models.py
 
 class Message(models.Model):
@@ -118,3 +124,20 @@ class ThreadMessage(models.Model):
 
     def __str__(self):
         return f'Message in {self.thread.title} from {self.sender.username if self.sender else "unknown"}: {self.text[:50]}'
+
+class PaymentRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', '手続き中'),
+        ('completed', '手続き完了'),
+        ('failed', '手続き失敗'),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    participant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payment_requests_sent')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'PaymentRequest from {self.participant.username} to {self.owner.username}'

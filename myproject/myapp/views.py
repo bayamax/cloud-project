@@ -18,10 +18,11 @@ import json
 
 from .forms import (
     CustomUserCreationForm, ProjectDescriptionForm, MessageForm,
-    GoalForm, MilestoneForm, ThreadForm, ThreadMessageForm, GitHubURLForm
+    GoalForm, MilestoneForm, ThreadForm, ThreadMessageForm, GitHubURLForm,
+    PayPayIDForm, SetRewardForm
 )
 from .models import (
-    Project, Goal, Milestone, Message, Thread, ThreadMessage
+    Project, Goal, Milestone, Message, Thread, ThreadMessage, PaymentRequest
 )
 
 User = get_user_model()
@@ -175,7 +176,7 @@ User = get_user_model()
 
 class ProjectCreateView(CreateView):
     model = Project
-    fields = ['title', 'description']
+    form_class = ProjectForm
     template_name = 'project_form.html'
 
     def get_initial(self):
@@ -407,17 +408,28 @@ def project_participants(request, pk):
     project = get_object_or_404(Project, id=pk)
     participants = project.participants.exclude(username__isnull=True).exclude(username='')
 
+    total_investment = project.total_investment
+    total_points = Milestone.objects.filter(
+        goal__project=project,
+    ).aggregate(Sum('points'))['points__sum'] or 0
+
     participants_data = []
     for participant in participants:
         completed_milestones = Milestone.objects.filter(
             assigned_to=participant,
-            status='completed',
             goal__project=project
         )
-        total_points = completed_milestones.aggregate(Sum('points'))['points__sum'] or 0
+        participant_points = completed_milestones.aggregate(Sum('points'))['points__sum'] or 0
+        contribution_ratio = participant_points / total_points if total_points > 0 else 0
+        reward_amount = total_investment * contribution_ratio
+
+        payment_request = PaymentRequest.objects.filter(project=project, participant=participant).first()
+
         participants_data.append({
             'participant': participant,
-            'completed_milestones_points': total_points
+            'completed_milestones_points': participant_points,
+            'reward_amount': reward_amount,
+            'payment_request': payment_request,
         })
 
     context = {
@@ -557,3 +569,127 @@ class BecomeOwnerView(LoginRequiredMixin, View):
         project.owner = request.user
         project.save()
         return redirect('project_detail', pk=pk)    
+
+class ProjectUpdateView(LoginRequiredMixin, UpdateView):
+    model = Project
+    form_class = ProjectForm
+    template_name = 'project_form.html'
+
+    def get_success_url(self):
+        return reverse('project_detail', args=[self.object.id])
+
+# myapp/views.py
+
+from django.shortcuts import get_object_or_404
+from django.contrib import messages
+from django.http import HttpResponseForbidden
+
+@login_required
+def account_view(request, username=None):
+    if username:
+        # 他のユーザーのプロフィールを表示
+        user_profile = get_object_or_404(User, username=username)
+        is_own_account = (user_profile == request.user)
+    else:
+        # 自分のプロフィールを表示
+        user_profile = request.user
+        is_own_account = True
+
+    if request.method == 'POST':
+        if is_own_account:
+            form = PayPayIDForm(request.POST, instance=user_profile)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'PayPay IDを更新しました。')
+                return redirect('account')
+        else:
+            return HttpResponseForbidden("他のユーザーの情報を編集することはできません。")
+    else:
+        if is_own_account:
+            form = PayPayIDForm(instance=user_profile)
+        else:
+            form = None
+
+    # プロフィール情報を取得
+    participating_projects = user_profile.participating_projects.all()
+
+    projects_data = []
+    for project in participating_projects:
+        completed_points = Milestone.objects.filter(
+            goal__project=project,
+            status='completed',
+            assigned_to=user_profile
+        ).aggregate(Sum('points'))['points__sum'] or 0
+
+        projects_data.append({
+            'project': project,
+            'completed_points': completed_points
+        })
+
+    total_completed_points = sum(data['completed_points'] for data in projects_data)
+
+    context = {
+        'user_profile': user_profile,
+        'projects_data': projects_data,
+        'total_completed_points': total_completed_points,
+        'form': form,
+        'is_own_account': is_own_account,
+    }
+
+    return render(request, 'account.html', context)
+
+# myapp/views.py
+
+from django.contrib import messages  # メッセージフレームワークを使用
+
+@login_required
+def initiate_payment(request, pk, participant_id):
+    project = get_object_or_404(Project, pk=pk)
+    participant = get_object_or_404(User, pk=participant_id)
+
+    if request.user != project.owner:
+        return HttpResponseForbidden("あなたはこのプロジェクトのオーナーではありません。")
+
+    if request.method == 'POST':
+        form = SetRewardForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['reward_amount']
+
+            payment_request, created = PaymentRequest.objects.update_or_create(
+                project=project,
+                participant=participant,
+                owner=request.user,
+                defaults={'amount': amount, 'status': 'pending'}
+            )
+
+            # メッセージを表示（必要に応じて）
+            messages.success(request, f'{participant.username} さんのPayPay IDは {participant.paypay_id} です。')
+
+            return redirect('project_participants', pk=project.pk)
+    else:
+        form = SetRewardForm()
+
+    context = {
+        'project': project,
+        'participant': participant,
+        'form': form,
+    }
+    return render(request, 'initiate_payment.html', context)
+
+# myapp/views.py
+
+@login_required
+def update_payment_status(request, pk, status):
+    payment_request = get_object_or_404(PaymentRequest, pk=pk)
+    participant = payment_request.participant
+
+    if request.user != participant:
+        return HttpResponseForbidden("あなたはこの支払いリクエストの受取人ではありません。")
+
+    if status not in ['completed', 'failed']:
+        return HttpResponseForbidden("無効なステータスです。")
+
+    payment_request.status = status
+    payment_request.save()
+
+    return redirect('project_participants', pk=payment_request.project.pk)

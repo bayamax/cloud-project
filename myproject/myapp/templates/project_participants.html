@@ -37,6 +37,7 @@
             text-decoration: underline;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js"></script>
 </head>
 <body>
     {% load static %}
@@ -50,12 +51,55 @@
     </nav>
 
     <div class="container">
+        <h2>{{ project.title }} - 参加者リスト</h2>
+        <p>※報酬額は参考値です。実際の支払いは当事者間で直接行ってください。</p>
         <ul class="list-group">
             {% for participant_data in participants_data %}
-                <li class="list-group-item">
-                    <a href="{% url 'account' username=participant_data.participant.username %}">
-                        {{ participant_data.participant.username }}
-                    </a> - 達成マイルストーンポイント: {{ participant_data.completed_milestones_points }}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <a href="{% url 'account_with_username' username=participant_data.participant.username %}">
+                            {{ participant_data.participant.username }}
+                        </a>
+                        - 達成マイルストーンポイント: {{ participant_data.completed_milestones_points }}
+                        - 報酬額（参考値）: ¥{{ participant_data.reward_amount|floatformat:2 }}
+                    </div>
+                    <div>
+                        {% if user == project.owner %}
+                            <!-- オーナー用の操作 -->
+                            {% if participant_data.payment_request %}
+                                <!-- ステータス表示 -->
+                                <span class="badge badge-info">{{ participant_data.payment_request.get_status_display }}</span>
+                                {% if participant_data.payment_request.status == 'pending' %}
+                                    <!-- PayPay IDを表示し、コピーするボタン -->
+                                    {% if participant_data.participant.paypay_id %}
+                                        <div>
+                                            <input type="text" id="paypay-id-{{ participant_data.participant.id }}" value="{{ participant_data.participant.paypay_id }}" readonly>
+                                            <button class="btn btn-outline-secondary btn-sm copy-button" data-clipboard-target="#paypay-id-{{ participant_data.participant.id }}">コピー</button>
+                                        </div>
+                                    {% else %}
+                                        <p>PayPay IDが未設定です。</p>
+                                    {% endif %}
+                                {% endif %}
+                            {% else %}
+                                <!-- 支払い手続きを開始するボタン -->
+                                <a href="{% url 'initiate_payment' project.pk participant_data.participant.pk %}" class="btn btn-primary btn-sm">報酬支払い手続きを進める</a>
+                            {% endif %}
+                        {% elif user == participant_data.participant %}
+                            <!-- 参加者用の操作 -->
+                            {% if participant_data.payment_request %}
+                                <span class="badge badge-info">{{ participant_data.payment_request.get_status_display }}</span>
+                                {% if participant_data.payment_request.status == 'pending' %}
+                                    <a href="{% url 'update_payment_status' participant_data.payment_request.pk 'completed' %}" class="btn btn-success btn-sm">受け取り完了</a>
+                                    <a href="{% url 'update_payment_status' participant_data.payment_request.pk 'failed' %}" class="btn btn-danger btn-sm">受け取り不可</a>
+                                {% endif %}
+                            {% endif %}
+                        {% else %}
+                            <!-- その他のユーザーにはステータスのみ表示 -->
+                            {% if participant_data.payment_request %}
+                                <span class="badge badge-info">{{ participant_data.payment_request.get_status_display }}</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
                 </li>
             {% empty %}
                 <li class="list-group-item">参加者がいません。</li>
@@ -65,7 +109,17 @@
         <a href="{% url 'project_detail' project.id %}" class="btn btn-primary mt-4">プロジェクト詳細に戻る</a>
     </div>
 
-
+    <!-- クリップボードコピーのスクリプト -->
+    <script>
+        var clipboard = new ClipboardJS('.copy-button');
+        clipboard.on('success', function(e) {
+            alert('PayPay IDをコピーしました: ' + e.text);
+            e.clearSelection();
+        });
+        clipboard.on('error', function(e) {
+            alert('コピーに失敗しました。手動でコピーしてください。');
+        });
+    </script>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.9.9/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>

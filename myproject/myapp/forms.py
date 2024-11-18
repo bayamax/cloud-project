@@ -7,13 +7,22 @@ class CustomUserCreationForm(UserCreationForm):
         model = CustomUser
         fields = ('username', 'email')  # 必要に応じて他のフィールドを追加
 
+class PayPayIDForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = ['paypay_id']
+        widgets = {
+            'paypay_id': forms.TextInput(attrs={'placeholder': 'PayPay IDを入力してください'})
+        }
+
+
 from django.forms import ModelForm
 from .models import Project
 
 class ProjectForm(ModelForm):
     class Meta:
         model = Project
-        fields = ['title', 'description', 'participants']  # 'owner' フィールドは通常、ビュー内で設定
+        fields = ['title', 'description', 'participants', 'total_investment']  # 'owner' フィールドは通常、ビュー内で設定
         
 from django import forms
 from .models import Goal, Milestone
@@ -87,4 +96,6 @@ class ThreadMessageForm(forms.ModelForm):
     class Meta:
         model = ThreadMessage
         fields = ['text']
- 
+
+class SetRewardForm(forms.Form):
+    reward_amount = forms.DecimalField(max_digits=12, decimal_places=2, label='報酬額（参考値）')
