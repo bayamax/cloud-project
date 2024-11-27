@@ -82,7 +82,7 @@
                                 {% endif %}
                             {% else %}
                                 <!-- 支払い手続きを開始するボタン -->
-                                <a href="{% url 'initiate_payment' project.pk participant_data.participant.pk %}" class="btn btn-primary btn-sm">報酬支払い手続きを進める</a>
+                                <a href="{% url 'initiate_payment' project.pk participant_data.participant.pk %}" class="btn btn-primary btn-sm">報酬支払い手続き</a>
                             {% endif %}
                         {% elif user == participant_data.participant %}
                             <!-- 参加者用の操作 -->

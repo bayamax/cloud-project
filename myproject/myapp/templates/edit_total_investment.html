@@ -1,0 +1,21 @@
+<!-- myapp/templates/edit_total_investment.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>投資額を編集</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- 必要なスタイルを追加 -->
+</head>
+<body>
+    <div class="container">
+        <h2>{{ object.title }} の投資額を編集</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">更新</button>
+        </form>
+        <a href="{% url 'project_detail' object.id %}" class="btn btn-secondary mt-3">戻る</a>
+    </div>
+</body>
+</html>

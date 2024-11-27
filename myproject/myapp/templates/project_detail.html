@@ -70,6 +70,13 @@
     <nav class="navbar navbar-expand-md navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{% url 'project_list' %}">{{ project.title }}</a>
+            <div class="total-investment">
+                <h5>総投資額: ¥{{ project.total_investment }}</h5>
+                {% if is_owner %}
+                    <a href="{% url 'project_edit' project.id %}" class="btn btn-primary btn-sm">投資額を編集</a>
+                {% endif %}
+            </div>
+
             <div class="account-info ml-auto">
                 {% if user.is_authenticated %}
                     <div class="mt-2 btn-group">
@@ -149,9 +156,23 @@
                     <div id="milestones-list-{{ goal_data.goal.id }}">
                         {% for milestone in goal_data.milestones %}
                             {% if not milestone.parent_milestone %}
-                                <div class="milestone" data-id="{{ milestone.id }}" data-parent-id="">
-                                    {{ milestone.text }} - Points: {{ milestone.points | floatformat:2 }}
-                                    {% include 'milestone_buttons.html' with milestone=milestone is_participant=is_participant project=project %}
+                                <div class="milestone" data-id="{{ milestone.id }}">
+                                    <div class="milestone-content">
+                                        <div class="milestone-text">
+                                            {{ milestone.text }} - Points: <span class="milestone-points" data-id="{{ milestone.id }}">
+                                                {% if milestone.manual_points %}
+                                                    {{ milestone.manual_points|floatformat:2 }}
+                                                {% else %}
+                                                    {{ milestone.auto_points|floatformat:2 }}
+                                                {% endif %}
+                                            </span>
+                                            {% if not milestone.child_milestones.exists %}
+                                                <!-- ポイント編集フィールド（初期状態では非表示） -->
+                                                <input type="number" step="0.01" class="point-input" value="{% if milestone.manual_points %}{{ milestone.manual_points|floatformat:2 }}{% else %}{{ milestone.auto_points|floatformat:2 }}{% endif %}" data-id="{{ milestone.id }}" style="width: 80px; display: none;">
+                                            {% endif %}
+                                        </div>
+                                        {% include 'milestone_buttons.html' with milestone=milestone is_participant=is_participant project=project %}
+                                    </div>
                                     <div id="milestones-list-{{ milestone.id }}">
                                         {% include 'milestone_recursive.html' with milestone=milestone is_participant=is_participant project=project %}
                                     </div>
@@ -166,6 +187,10 @@
                     {% if goals_with_milestones %}
                         {% for goal_data in goals_with_milestones %}
                             {% if goal_data.milestones %}
+                                {% if is_owner %}
+                                <button id="edit-points-btn" class="btn btn-primary">ポイント編集モード</button>
+                                <button id="save-points-btn" class="btn btn-success" style="display:none;">編集を保存</button>
+                                {% endif %}
                                 <button id="edit-roadmap-btn" class="btn btn-primary">マイルストーンを並び替え</button>
                                 <button id="save-roadmap-btn" class="btn btn-success" style="display:none;">並び替えを終了</button>
                             {% endif %}
@@ -326,6 +351,69 @@
             };
 
             new Chart(ctx, config);
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const editPointsBtn = document.getElementById('edit-points-btn');
+            const savePointsBtn = document.getElementById('save-points-btn');
+
+            editPointsBtn.addEventListener('click', function() {
+                // ポイント編集フィールドを表示
+                document.querySelectorAll('.point-input').forEach(function(elem) {
+                    elem.style.display = 'inline-block';
+                });
+                // ポイント表示を非表示
+                document.querySelectorAll('.milestone-points').forEach(function(elem) {
+                    elem.style.display = 'none';
+                });
+                editPointsBtn.style.display = 'none';
+                savePointsBtn.style.display = 'inline-block';
+            });
+
+            savePointsBtn.addEventListener('click', function() {
+                // ポイント編集フィールドを非表示
+                document.querySelectorAll('.point-input').forEach(function(elem) {
+                    elem.style.display = 'none';
+                });
+                // ポイント表示を再表示
+                document.querySelectorAll('.milestone-points').forEach(function(elem) {
+                    elem.style.display = 'inline';
+                });
+                editPointsBtn.style.display = 'inline-block';
+                savePointsBtn.style.display = 'none';
+
+                // 変更されたポイントをサーバーに送信
+                let updates = [];
+                document.querySelectorAll('.point-input').forEach(function(inputField) {
+                    const milestoneId = inputField.getAttribute('data-id');
+                    const newPointValue = parseFloat(inputField.value);
+                    updates.push({
+                        'milestone_id': milestoneId,
+                        'new_points': newPointValue
+                    });
+                });
+
+                // サーバーに送信
+                fetch('{% url "update_milestone_points" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({'updates': updates})
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        response.json().then(data => {
+                            alert('ポイントの更新に失敗しました: ' + data.message);
+                        });
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    alert('ポイントの更新中にエラーが発生しました');
+                });
+            });
         });
     </script>
 

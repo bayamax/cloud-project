@@ -1,10 +1,7 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
-from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
-from django.contrib.auth.models import AbstractUser
-from django.db import models
+from decimal import Decimal
 
 class CustomUser(AbstractUser):
     bio = models.TextField(max_length=500, blank=True)
@@ -23,9 +20,6 @@ class CustomUser(AbstractUser):
             self.set_unusable_password()
         super().save(*args, **kwargs)
 
-# models.py
-
-
 class Project(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
@@ -41,7 +35,7 @@ class Project(models.Model):
         related_name='participating_projects'
     )
     github_url = models.CharField(max_length=200, blank=True, null=True)
-    total_investment = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # 総投資額を追加
+    total_investment = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
 
     def __str__(self):
         return self.title
@@ -49,11 +43,9 @@ class Project(models.Model):
 class Goal(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='goals')
     text = models.TextField()
-    # 他のフィールド...
 
-
-from django.db import models
-from django.conf import settings
+    def __str__(self):
+        return self.text
 
 class Milestone(models.Model):
     goal = models.ForeignKey('Goal', related_name='milestones', on_delete=models.CASCADE)
@@ -75,18 +67,16 @@ class Milestone(models.Model):
         ],
         default='not_started'
     )
-    points = models.DecimalField(max_digits=6, decimal_places=2, default=0)
-    num_children = models.IntegerField(default=0)
+    points = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    manual_points = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    auto_points = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     order = models.IntegerField(default=0)
+
+    def is_leaf(self):
+        return not self.child_milestones.exists()
 
     def __str__(self):
         return self.text
-    
-    @property
-    def reference_reward(self):
-        project = self.goal.project
-        return project.total_investment * self.points
-# models.py
 
 class Message(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='messages')
@@ -94,8 +84,8 @@ class Message(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='sent_messages',
-        null=True,  # 追加
-        blank=True  # 追加
+        null=True,
+        blank=True
     )
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -103,11 +93,6 @@ class Message(models.Model):
     def __str__(self):
         sender_username = self.sender.username if self.sender else "Anonymous"
         return f'Message from {sender_username} on {self.project.title}: {self.text[:50]}'
-# myapp/models.py
-# models.py
-# models.py
-from django.db import models
-from django.conf import settings
 
 class Thread(models.Model):
     title = models.CharField(max_length=255)
@@ -123,7 +108,8 @@ class ThreadMessage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'Message in {self.thread.title} from {self.sender.username if self.sender else "unknown"}: {self.text[:50]}'
+        sender_name = self.sender.username if self.sender else "Anonymous"
+        return f'Message in {self.thread.title} from {sender_name}: {self.text[:50]}'
 
 class PaymentRequest(models.Model):
     STATUS_CHOICES = [

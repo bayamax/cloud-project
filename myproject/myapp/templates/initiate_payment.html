@@ -2,15 +2,13 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>報酬額の設定と支払い手続き</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>報酬支払い手続き</title>
 </head>
 <body>
-    <h2>{{ participant.username }} さんへの報酬額を設定</h2>
+    <h2>{{ participant.username }} さんへの報酬額</h2>
+    <p>報酬額: ¥{{ reward_amount }}</p>
     <form method="post">
         {% csrf_token %}
-        {{ form.as_p }}
         <button type="submit" class="btn btn-primary">報酬支払い手続きを進める</button>
     </form>
     <a href="{% url 'project_participants' project.pk %}">参加者リストに戻る</a>
