@@ -63,13 +63,26 @@ def _update_parent_points(project):
 
 def adjust_milestone_points_on_investment_change(project, new_investment):
     with transaction.atomic():
-        leaf_milestones = Milestone.objects.filter(goal__project=project, child_milestones__isnull=True).select_for_update()
-        if not leaf_milestones.exists():
+        # リーフマイルストーンの ID を取得
+        leaf_milestone_ids = list(Milestone.objects.filter(
+            goal__project=project,
+            child_milestones__isnull=True
+        ).values_list('id', flat=True))
+
+        if not leaf_milestone_ids:
             return
 
-        total_points = leaf_milestones.aggregate(total_points=Sum('points'))['total_points'] or Decimal('0.0')
+        # ID を使用してマイルストーンを取得し、ロックを適用
+        leaf_milestones = Milestone.objects.filter(
+            id__in=leaf_milestone_ids
+        ).select_for_update()
+
+        total_points = leaf_milestones.aggregate(
+            total_points=Sum('points')
+        )['total_points'] or Decimal('0.0')
+
         difference = new_investment - total_points
-        num_leaf_milestones = leaf_milestones.count()
+        num_leaf_milestones = len(leaf_milestone_ids)
 
         if num_leaf_milestones == 0:
             return
