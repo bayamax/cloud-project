@@ -3,16 +3,17 @@
     <div class="milestone" data-id="{{ child.id }}">
         <div class="milestone-content">
             <div class="milestone-text">
-                {{ child.text }} - Points: <span class="milestone-points" data-id="{{ child.id }}">
-                    {% if child.manual_points %}
-                        {{ child.manual_points|floatformat:2 }}
-                    {% else %}
-                        {{ child.auto_points|floatformat:2 }}
-                    {% endif %}
-                </span>
+                {{ child.text }}
                 {% if not child.child_milestones.exists %}
+                     - Points: <span class="milestone-points" data-id="{{ child.id }}">
+                        {% if child.manual_points %}
+                            {{ child.manual_points|floatformat:2 }}
+                        {% else %}
+                            {{ child.auto_points|floatformat:2 }}
+                        {% endif %}
+                    </span>
                     <!-- ポイント編集フィールド（初期状態では非表示） -->
-                    <input type="number" step="0.01" class="point-input" value="{% if child.manual_points %}{{ child.manual_points|floatformat:2 }}{% else %}{{ child.auto_points|floatformat:2 }}{% endif %}" data-id="{{ child.id }}" style="width: 80px; display: none;">
+                    <input type="number" step="100" class="point-input" value="{% if child.manual_points %}{{ child.manual_points|floatformat:2 }}{% else %}{{ child.auto_points|floatformat:2 }}{% endif %}" data-id="{{ child.id }}" style="width: 80px; display: none;">
                 {% endif %}
             </div>
             {% include 'milestone_buttons.html' with milestone=child is_participant=is_participant project=project %}

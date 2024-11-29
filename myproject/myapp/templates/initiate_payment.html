@@ -2,7 +2,42 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>報酬支払い手続き</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* 既存のスタイルはそのまま使用 */
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-image: linear-gradient(90deg, rgba(40, 0, 255, 1), rgba(255, 160, 71, 1));
+        }
+        .container {
+            max-width: 960px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .header-title {
+            text-align: center;
+            margin-top: 20px;
+            color: white;
+        }
+        .btn-primary, .btn-secondary {
+            margin-top: 10px;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .list-group-item a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .list-group-item a:hover {
+            text-decoration: underline;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js"></script>
 </head>
 <body>
     <h2>{{ participant.username }} さんへの報酬額</h2>
@@ -12,5 +47,8 @@
         <button type="submit" class="btn btn-primary">報酬支払い手続きを進める</button>
     </form>
     <a href="{% url 'project_participants' project.pk %}">参加者リストに戻る</a>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.9.9/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>

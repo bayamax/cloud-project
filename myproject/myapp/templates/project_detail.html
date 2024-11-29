@@ -67,14 +67,16 @@
 </head>
 <body>
     {% load static %}
+    {% load humanize %}
     <nav class="navbar navbar-expand-md navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{% url 'project_list' %}">{{ project.title }}</a>
-            <div class="total-investment">
-                <h5>総投資額: ¥{{ project.total_investment }}</h5>
-                {% if is_owner %}
-                    <a href="{% url 'project_edit' project.id %}" class="btn btn-primary btn-sm">投資額を編集</a>
-                {% endif %}
+                <div class="d-flex align-items-center">
+                    <h5 class="mr-3 text-white">総投資額: ¥{{ project.total_investment|floatformat:0 }}</h5>
+                    {% if is_owner %}
+                        <a href="{% url 'project_edit' project.id %}" class="btn btn-primary btn-sm">投資額を編集</a>
+                    {% endif %}
+                </div>
             </div>
 
             <div class="account-info ml-auto">
@@ -159,14 +161,15 @@
                                 <div class="milestone" data-id="{{ milestone.id }}">
                                     <div class="milestone-content">
                                         <div class="milestone-text">
-                                            {{ milestone.text }} - Points: <span class="milestone-points" data-id="{{ milestone.id }}">
-                                                {% if milestone.manual_points %}
-                                                    {{ milestone.manual_points|floatformat:2 }}
-                                                {% else %}
-                                                    {{ milestone.auto_points|floatformat:2 }}
-                                                {% endif %}
-                                            </span>
+                                            {{ milestone.text }}
                                             {% if not milestone.child_milestones.exists %}
+                                                - Points: <span class="milestone-points" data-id="{{ milestone.id }}">
+                                                    {% if milestone.manual_points %}
+                                                        {{ milestone.manual_points|floatformat:2 }}
+                                                    {% else %}
+                                                        {{ milestone.auto_points|floatformat:2 }}
+                                                    {% endif %}
+                                                </span>
                                                 <!-- ポイント編集フィールド（初期状態では非表示） -->
                                                 <input type="number" step="0.01" class="point-input" value="{% if milestone.manual_points %}{{ milestone.manual_points|floatformat:2 }}{% else %}{{ milestone.auto_points|floatformat:2 }}{% endif %}" data-id="{{ milestone.id }}" style="width: 80px; display: none;">
                                             {% endif %}
@@ -321,10 +324,10 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             const ctx = document.getElementById('progressChart').getContext('2d');
-            const totalCompletedPoints = {{ total_completed_points }};
+            const progressPercentage = {{ progress_percentage|default:0 }};
             const progressData = {
                 datasets: [{
-                    data: [totalCompletedPoints, 1 - totalCompletedPoints],
+                    data: [progressPercentage, 100 - progressPercentage],
                     backgroundColor: ['#007bff', '#e9ecef']
                 }],
                 labels: ['Completed', 'Remaining']

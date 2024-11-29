@@ -106,7 +106,7 @@ class ProjectDetailView(DetailView):
         context['project_owner'] = project.owner.username if project.owner else 'unknown'
 
         # ポイント再計算
-        recalculate_milestone_points(project)
+        #recalculate_milestone_points(project)
 
         # ゴールとマイルストーンの取得
         goals_with_milestones = []
@@ -118,6 +118,31 @@ class ProjectDetailView(DetailView):
         # メッセージフォームとメッセージ一覧
         context['message_form'] = MessageForm()
         context['messages'] = project.messages.order_by('-created_at')
+
+        # 総投資額をコンテキストに追加
+        context['total_investment'] = project.total_investment
+
+        # リーフマイルストーン（末端マイルストーン）の総数を取得
+        total_leaf_milestones = Milestone.objects.filter(
+            goal__project=project,
+            child_milestones__isnull=True
+        ).count()
+
+        # 完了しているリーフマイルストーンの数を取得
+        completed_leaf_milestones = Milestone.objects.filter(
+            goal__project=project,
+            child_milestones__isnull=True,
+            status='completed'
+        ).count()
+
+        # 進捗率を計算
+        if total_leaf_milestones > 0:
+            progress_percentage = (completed_leaf_milestones / total_leaf_milestones) * 100
+        else:
+            progress_percentage = 0
+
+        context['progress_percentage'] = progress_percentage
+
 
         # その他のコンテキストデータ
         total_completed_points = Milestone.objects.filter(
